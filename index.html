@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project XIX — City Escape Destination</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+<style>
+  /* ── Reset & base ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green-deep:   #1C3A2A;
+    --green-mid:    #2D5A3D;
+    --green-light:  #4A7C59;
+    --gold:         #C9A84C;
+    --gold-light:   #E8C96A;
+    --cream:        #F5F0E8;
+    --cream-dark:   #E8E0D0;
+    --white:        #FFFFFF;
+    --black:        #0A0A0A;
+    --text-dark:    #1A1A1A;
+    --text-mid:     #4A4A4A;
+    --text-light:   #8A8A8A;
+    --glass-bg:     rgba(255,255,255,0.92);
+    --glass-border: rgba(255,255,255,0.4);
+    --overlay-dark: rgba(10,10,10,0.55);
+  }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+    background: var(--black);
+    color: var(--text-dark);
+  }
+
+  /* ── SCREEN MANAGER ───────────────────────────────────── */
+  .screen { position: fixed; inset: 0; transition: opacity .5s ease; }
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  /* ── LOADING SCREEN ───────────────────────────────────── */
+  #screen-loading {
+    background: var(--green-deep);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .loading-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 48px; font-weight: 300;
+    color: var(--cream); letter-spacing: .08em;
+    margin-bottom: 6px;
+  }
+  .loading-logo span { color: var(--gold); }
+  .loading-sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px; font-weight: 400;
+    color: rgba(245,240,232,.45);
+    letter-spacing: .22em; text-transform: uppercase;
+    margin-bottom: 48px;
+  }
+  .loading-bar-wrap {
+    width: 180px; height: 1px;
+    background: rgba(255,255,255,.12);
+    position: relative; overflow: hidden;
+  }
+  .loading-bar {
+    position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: var(--gold);
+    animation: loadBar 1.6s ease forwards;
+  }
+  @keyframes loadBar { to { left: 0; } }
+
+  /* ── MASTERPLAN SCREEN ────────────────────────────────── */
+  #screen-map {
+    background: var(--black);
+    z-index: 10;
+  }
+
+  /* Map container — holds the plan image + SVG overlay */
+  .map-container {
+    position: relative;
+    width: 100%; height: 100%;
+    overflow: hidden;
+  }
+
+  /* Plan images */
+  .plan-img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: opacity .6s ease;
+    user-select: none; pointer-events: none;
+  }
+  .plan-img.hidden { opacity: 0; }
+
+  /* Placeholder plan backgrounds (replace with real images) */
+  .plan-2d-placeholder {
+    background:
+      radial-gradient(ellipse at 38% 42%, #2D5A3D 0%, transparent 45%),
+      radial-gradient(ellipse at 62% 55%, #3B6B4A 0%, transparent 35%),
+      linear-gradient(145deg, #1a3024 0%, #0e2019 40%, #152b1c 100%);
+  }
+  .plan-3d-placeholder {
+    background:
+      radial-gradient(ellipse at 42% 38%, #1C4A2E 0%, transparent 50%),
+      radial-gradient(ellipse at 60% 60%, #4A7C59 0%, transparent 30%),
+      linear-gradient(130deg, #131f17 0%, #0a180d 50%, #0f2215 100%);
+  }
+
+  /* SVG hotspot layer */
+  .hotspot-svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    cursor: default;
+  }
+
+  /* Zone polygon styles */
+  .zone-poly {
+    fill: rgba(201,168,76, 0);
+    stroke: rgba(201,168,76, 0);
+    stroke-width: 1.5;
+    cursor: pointer;
+    transition: fill .2s, stroke .2s;
+  }
+  .zone-poly:hover, .zone-poly.active {
+    fill: rgba(201,168,76, 0.18);
+    stroke: rgba(201,168,76, 0.7);
+  }
+
+  /* Zone label pins */
+  .zone-label-group { pointer-events: none; transition: opacity .2s; opacity: 0; }
+  .zone-poly:hover + .zone-label-group,
+  .zone-poly.hovered + .zone-label-group { opacity: 1; }
+
+  /* Vignette */
+  .map-vignette {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 50%,
+      transparent 50%, rgba(0,0,0,.45) 100%);
+  }
+
+  /* ── NAV BAR ──────────────────────────────────────────── */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 50;
+    display: flex; align-items: center;
+    padding: 0 28px;
+    height: 64px;
+    background: rgba(28,58,42,0.82);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(201,168,76,.18);
+  }
+  .nav-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 400;
+    color: var(--cream); letter-spacing: .06em;
+    margin-right: auto;
+  }
+  .nav-logo span { color: var(--gold); }
+  .nav-tag {
+    font-size: 10px; font-weight: 400;
+    letter-spacing: .2em; text-transform: uppercase;
+    color: rgba(245,240,232,.4);
+    border-left: 1px solid rgba(201,168,76,.25);
+    padding-left: 16px; margin-left: 16px;
+    display: none;
+  }
+  @media (min-width: 600px) { .nav-tag { display: block; } }
+
+  /* Toggle 2D / 3D */
+  .view-toggle {
+    display: flex; align-items: center;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(201,168,76,.25);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-left: 20px;
+  }
+  .toggle-btn {
+    padding: 7px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: rgba(245,240,232,.5);
+    background: transparent; border: none;
+    cursor: pointer; transition: all .2s;
+  }
+  .toggle-btn.active {
+    background: var(--gold);
+    color: var(--green-deep);
+  }
+
+  /* Instruction hint */
+  .map-hint {
+    position: fixed; bottom: 28px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(28,58,42,0.82);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(201,168,76,.2);
+    border-radius: 40px;
+    padding: 10px 20px;
+    font-size: 12px; font-weight: 400;
+    color: rgba(245,240,232,.65);
+    letter-spacing: .04em;
+    white-space: nowrap;
+    transition: opacity .4s;
+    pointer-events: none;
+  }
+  .map-hint::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: pulse 2s ease infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(1.4); }
+  }
+
+  /* Zone legend — bottom right */
+  .legend {
+    position: fixed; bottom: 28px; right: 28px;
+    z-index: 50;
+    background: rgba(28,58,42,0.82);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(201,168,76,.2);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: none;
+  }
+  @media (min-width: 900px) { .legend { display: block; } }
+  .legend-title {
+    font-size: 9px; font-weight: 500;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 10px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: rgba(245,240,232,.65);
+    margin-bottom: 5px; cursor: pointer;
+    transition: color .15s;
+  }
+  .legend-item:last-child { margin-bottom: 0; }
+  .legend-item:hover { color: var(--cream); }
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gold); flex-shrink: 0;
+    opacity: .7;
+  }
+
+  /* ── FLY-IN TRANSITION OVERLAY ────────────────────────── */
+  #fly-overlay {
+    position: fixed; inset: 0; z-index: 60;
+    pointer-events: none; opacity: 0;
+    background: var(--black);
+    transition: opacity .35s ease;
+  }
+  #fly-overlay.active { opacity: 1; pointer-events: all; }
+
+  /* Flying map (zooms in on click) */
+  #fly-map {
+    position: fixed; inset: 0; z-index: 55;
+    pointer-events: none; opacity: 0;
+    transform-origin: 50% 50%;
+  }
+  #fly-map-img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  #fly-map.active { opacity: 1; }
+
+  /* ── PANORAMIC VIEWER SCREEN ──────────────────────────── */
+  #screen-pano {
+    z-index: 20;
+    background: var(--black);
+  }
+  #pannellum-container {
+    position: absolute; inset: 0;
+  }
+
+  /* Pano nav bar */
+  .pano-nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 70;
+    display: flex; align-items: center;
+    padding: 0 20px;
+    height: 64px;
+    background: rgba(10,10,10,0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .back-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 12px; font-weight: 400;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--cream);
+    cursor: pointer; transition: all .2s;
+  }
+  .back-btn:hover { background: rgba(255,255,255,.14); }
+  .back-btn svg { width: 14px; height: 14px; stroke: var(--cream); }
+  .pano-zone-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 400;
+    color: var(--cream); letter-spacing: .05em;
+    margin: 0 auto;
+  }
+  .pano-zone-sub {
+    font-size: 11px; font-weight: 400;
+    letter-spacing: .15em; text-transform: uppercase;
+    color: rgba(245,240,232,.35);
+    margin-left: auto;
+  }
+
+  /* Zone info drawer */
+  .zone-drawer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    z-index: 70;
+    background: rgba(10,10,10,0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(201,168,76,.2);
+    padding: 20px 28px 28px;
+    transform: translateY(100%);
+    transition: transform .4s cubic-bezier(.16,1,.3,1);
+  }
+  .zone-drawer.open { transform: translateY(0); }
+  .drawer-drag {
+    width: 36px; height: 3px;
+    background: rgba(255,255,255,.15);
+    border-radius: 2px;
+    margin: 0 auto 18px;
+    cursor: pointer;
+  }
+  .drawer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr auto;
+    gap: 20px; align-items: center;
+  }
+  @media (max-width: 700px) {
+    .drawer-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .drawer-cta { grid-column: 1 / -1; }
+  }
+  .drawer-stat-label {
+    font-size: 9px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase;
+    color: rgba(245,240,232,.35); margin-bottom: 5px;
+  }
+  .drawer-stat-val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px; font-weight: 400;
+    color: var(--cream); letter-spacing: .02em;
+  }
+  .drawer-stat-unit {
+    font-size: 11px; color: rgba(245,240,232,.4);
+    margin-left: 3px;
+  }
+  .drawer-desc {
+    font-size: 12px; color: rgba(245,240,232,.5);
+    line-height: 1.6; margin-top: 4px;
+    display: none;
+  }
+  @media (min-width: 700px) { .drawer-desc { display: block; } }
+  .cta-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--gold);
+    color: var(--green-deep);
+    border: none; border-radius: 6px;
+    padding: 12px 22px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 500;
+    letter-spacing: .08em; text-transform: uppercase;
+    cursor: pointer; transition: background .2s;
+    white-space: nowrap;
+  }
+  .cta-btn:hover { background: var(--gold-light); }
+  .cta-btn svg { width: 13px; height: 13px; stroke: var(--green-deep); }
+
+  /* Nav dots (zone switcher) */
+  .zone-nav-dots {
+    position: fixed; left: 28px; top: 50%;
+    transform: translateY(-50%);
+    z-index: 70;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .zone-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,.2);
+    border: 1px solid rgba(255,255,255,.15);
+    cursor: pointer; transition: all .2s;
+    position: relative;
+  }
+  .zone-dot.active {
+    background: var(--gold);
+    border-color: var(--gold);
+    transform: scale(1.3);
+  }
+  .zone-dot:hover { background: rgba(255,255,255,.5); }
+  .zone-dot-tip {
+    position: absolute; left: 18px; top: 50%;
+    transform: translateY(-50%);
+    background: rgba(28,58,42,.9);
+    border: 1px solid rgba(201,168,76,.3);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px; color: var(--cream);
+    white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transition: opacity .15s;
+  }
+  .zone-dot:hover .zone-dot-tip { opacity: 1; }
+
+  /* Pannellum overrides */
+  .pnlm-load-box { display: none !important; }
+  .pnlm-ui { display: none !important; }
+
+  /* Placeholder panorama canvas (shown while real panos load) */
+  .pano-placeholder {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 1;
+  }
+  .pano-placeholder-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px; font-weight: 300; font-style: italic;
+    color: rgba(255,255,255,.2);
+    letter-spacing: .06em;
+    margin-bottom: 12px;
+  }
+  .pano-placeholder-sub {
+    font-size: 11px; font-weight: 400;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: rgba(255,255,255,.12);
+  }
+  .pano-placeholder-icon {
+    width: 56px; height: 56px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+    color: rgba(255,255,255,.15);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     LOADING SCREEN
+════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-loading">
+  <div class="loading-logo">PROJECT <span>XIX</span></div>
+  <div class="loading-sub">Lakowe · Ibeju-Lekki · Lagos</div>
+  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MASTERPLAN SCREEN
+════════════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-map">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-logo">PROJECT <span>XIX</span></div>
+    <div class="nav-tag">West Africa's Premier City-Escape</div>
+    <div class="view-toggle">
+      <button class="toggle-btn active" id="btn-2d" onclick="setView('2d')">2D Plan</button>
+      <button class="toggle-btn" id="btn-3d" onclick="setView('3d')">3D Aerial</button>
+    </div>
+  </nav>
+
+  <!-- MAP -->
+  <div class="map-container" id="map-container">
+
+    <!-- Plan images: replace src with actual image paths -->
+    <!-- 2D Plan: assets/plan-2d.jpg -->
+    <!-- 3D Aerial: assets/plan-3d.jpg -->
+    <div class="plan-img plan-2d-placeholder" id="plan-2d"
+      style="position:absolute;inset:0;width:100%;height:100%;">
+    </div>
+    <div class="plan-img plan-3d-placeholder hidden" id="plan-3d"
+      style="position:absolute;inset:0;width:100%;height:100%;">
+    </div>
+
+    <!--
+      ZONE HOTSPOT OVERLAY
+      ─────────────────────────────────────────────────────
+      Positions are percentages of the viewport mapped to the
+      Updated Masterplan layout from the deck.
+
+      The SVG uses a 1000×620 internal coordinate space.
+      Each zone polygon approximates its position on the plan.
+      Replace polygon points with precise coordinates once the
+      actual plan image is dropped in.
+
+      Zones (from the Updated Masterplan slide):
+        - Polo Field (centre)
+        - Clubhouse (south-centre)
+        - Premium Villas North (top row)
+        - Premium Villas East/West (flanking field)
+        - Loft Apartments (north strip + blocks of flats)
+        - Horse Stables (south-west corner)
+        - Training Field (south-west)
+        - Paddock (south-east)
+    -->
+    <svg class="hotspot-svg" id="hotspot-svg"
+      viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid slice"
+      xmlns="http://www.w3.org/2000/svg">
+
+      <!-- POLO FIELD (centre) -->
+      <polygon class="zone-poly" id="zone-polo-field"
+        data-zone="polo-field"
+        points="290,155 680,155 720,455 250,455"
+        onclick="enterZone('polo-field')"/>
+      <g class="zone-label-group" id="label-polo-field">
+        <rect x="400" y="270" width="200" height="54" rx="6"
+          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+        <text x="500" y="291" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="18" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Polo Field</text>
+        <text x="500" y="312" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.8)" letter-spacing="2">40,000 SQM · INTERNATIONAL STANDARD</text>
+      </g>
+
+      <!-- CLUBHOUSE (south-centre, below the field) -->
+      <polygon class="zone-poly" id="zone-clubhouse"
+        data-zone="clubhouse"
+        points="350,456 650,456 650,535 350,535"
+        onclick="enterZone('clubhouse')"/>
+      <g class="zone-label-group" id="label-clubhouse">
+        <rect x="420" y="468" width="160" height="48" rx="6"
+          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+        <text x="500" y="488" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="17" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Clubhouse</text>
+        <text x="500" y="508" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.8)" letter-spacing="2">3,419 SQM · 3 FLOORS</text>
+      </g>
+
+      <!-- PREMIUM VILLAS — WEST (left of field) -->
+      <polygon class="zone-poly" id="zone-villa-west"
+        data-zone="villa-west"
+        points="145,165 285,165 285,455 145,455"
+        onclick="enterZone('villa-west')"/>
+      <g class="zone-label-group" id="label-villa-west">
+        <rect x="108" y="280" width="170" height="54" rx="6"
+          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+        <text x="193" y="302" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Premium Villas</text>
+        <text x="193" y="322" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.8)" letter-spacing="2">3 BED · POLO VIEW</text>
+      </g>
+
+      <!-- PREMIUM VILLAS — EAST (right of field) -->
+      <polygon class="zone-poly" id="zone-villa-east"
+        data-zone="villa-east"
+        points="720,165 855,165 855,455 720,455"
+        onclick="enterZone('villa-east')"/>
+      <g class="zone-label-group" id="label-villa-east">
+        <rect x="722" y="280" width="170" height="54" rx="6"
+          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+        <text x="807" y="302" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Premium Villas</text>
+        <text x="807" y="322" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.8)" letter-spacing="2">3 BED · POLO VIEW</text>
+      </g>
+
+      <!-- LOFT APARTMENTS (north strip) -->
+      <polygon class="zone-poly" id="zone-loft-apts"
+        data-zone="loft-apts"
+        points="145,55 855,55 855,150 145,150"
+        onclick="enterZone('loft-apts')"/>
+      <g class="zone-label-group" id="label-loft-apts">
+        <rect x="415" y="72" width="170" height="52" rx="6"
+          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+        <text x="500" y="93" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Loft Apartments</text>
+        <text x="500" y="114" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.8)" letter-spacing="2">96 UNITS · 125 SQM</text>
+      </g>
+
+      <!-- TRAINING FIELD (south-west) -->
+      <polygon class="zone-poly" id="zone-training"
+        data-zone="training"
+        points="40,536 290,536 290,600 40,600"
+        onclick="enterZone('training')"/>
+      <g class="zone-label-group" id="label-training">
+        <rect x="42" y="542" width="170" height="48" rx="6"
+          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+        <text x="127" y="563" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="15" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Training Field</text>
+        <text x="127" y="582" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.8)" letter-spacing="2">5,000 SQM</text>
+      </g>
+
+      <!-- STABLES (south-west cluster) -->
+      <polygon class="zone-poly" id="zone-stables"
+        data-zone="stables"
+        points="40,456 140,456 140,532 40,532"
+        onclick="enterZone('stables')"/>
+      <g class="zone-label-group" id="label-stables">
+        <rect x="0" y="472" width="145" height="48" rx="6"
+          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+        <text x="72" y="493" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Stables</text>
+        <text x="72" y="513" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.8)" letter-spacing="2">4 BLOCKS · 56 STALLS</text>
+      </g>
+
+      <!-- PADDOCK (south-east) -->
+      <polygon class="zone-poly" id="zone-paddock"
+        data-zone="paddock"
+        points="856,456 960,456 960,600 856,600"
+        onclick="enterZone('paddock')"/>
+      <g class="zone-label-group" id="label-paddock">
+        <rect x="820" y="500" width="140" height="48" rx="6"
+          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
+        <text x="890" y="520" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Paddock</text>
+        <text x="890" y="540" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.8)" letter-spacing="2">1,645 SQM</text>
+      </g>
+
+    </svg>
+
+    <div class="map-vignette"></div>
+  </div>
+
+  <!-- HINT -->
+  <div class="map-hint" id="map-hint">Click any zone to explore</div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-title">Zones</div>
+    <div class="legend-item" onclick="enterZone('polo-field')">
+      <div class="legend-dot"></div>Polo Field
+    </div>
+    <div class="legend-item" onclick="enterZone('clubhouse')">
+      <div class="legend-dot"></div>Clubhouse &amp; Pavilion
+    </div>
+    <div class="legend-item" onclick="enterZone('villa-west')">
+      <div class="legend-dot"></div>Premium Villas (West)
+    </div>
+    <div class="legend-item" onclick="enterZone('villa-east')">
+      <div class="legend-dot"></div>Premium Villas (East)
+    </div>
+    <div class="legend-item" onclick="enterZone('loft-apts')">
+      <div class="legend-dot"></div>Loft Apartments
+    </div>
+    <div class="legend-item" onclick="enterZone('stables')">
+      <div class="legend-dot"></div>Horse Stables
+    </div>
+    <div class="legend-item" onclick="enterZone('training')">
+      <div class="legend-dot"></div>Training Field
+    </div>
+    <div class="legend-item" onclick="enterZone('paddock')">
+      <div class="legend-dot"></div>Paddock
+    </div>
+  </div>
+
+</div><!-- /screen-map -->
+
+<!-- ═══════════════════════════════════════════════════════
+     FLY-IN TRANSITION ELEMENTS
+════════════════════════════════════════════════════════ -->
+<div id="fly-overlay"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PANORAMIC VIEWER SCREEN
+════════════════════════════════════════════════════════ -->
+<div class="screen hidden" id="screen-pano">
+
+  <!-- Pano nav -->
+  <div class="pano-nav">
+    <button class="back-btn" onclick="exitPano()">
+      <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 12L6 8L10 4"/>
+      </svg>
+      Masterplan
+    </button>
+    <div class="pano-zone-title" id="pano-title">Polo Field</div>
+    <div class="pano-zone-sub" id="pano-sub">EXPLORE · DRAG TO LOOK AROUND</div>
+  </div>
+
+  <!-- Pannellum target -->
+  <div id="pannellum-container">
+    <!-- Placeholder shown before real panoramas are added -->
+    <div class="pano-placeholder" id="pano-placeholder">
+      <div class="pano-placeholder-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1" stroke-linecap="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
+        </svg>
+      </div>
+      <div class="pano-placeholder-label" id="pano-ph-name">Polo Field</div>
+      <div class="pano-placeholder-sub">Replace with equirectangular panorama</div>
+    </div>
+  </div>
+
+  <!-- Zone nav dots -->
+  <div class="zone-nav-dots" id="zone-nav-dots"></div>
+
+  <!-- Info drawer -->
+  <div class="zone-drawer" id="zone-drawer">
+    <div class="drawer-drag" onclick="toggleDrawer()"></div>
+    <div class="drawer-grid">
+      <div>
+        <div class="drawer-stat-label">Zone</div>
+        <div class="drawer-stat-val" id="info-name">Polo Field</div>
+      </div>
+      <div>
+        <div class="drawer-stat-label">Units / Area</div>
+        <div class="drawer-stat-val" id="info-units">—<span class="drawer-stat-unit" id="info-units-unit"></span></div>
+      </div>
+      <div>
+        <div class="drawer-stat-label">GFA per unit</div>
+        <div class="drawer-stat-val" id="info-gfa">—<span class="drawer-stat-unit">sqm</span></div>
+      </div>
+      <div>
+        <div class="drawer-stat-label">Type</div>
+        <div class="drawer-stat-val" id="info-type">—</div>
+      </div>
+      <div class="drawer-cta">
+        <button class="cta-btn" onclick="registerInterest()">
+          <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 8h12M8 2l6 6-6 6"/>
+          </svg>
+          Register Interest
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /screen-pano -->
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ZONE DATA
+   Replace panoImage values with paths to your equirectangular
+   panoramic images once generated. Leave as null to use the
+   animated gradient placeholder.
+═══════════════════════════════════════════════════════════ */
+const ZONES = {
+  'polo-field': {
+    name: 'Polo Field',
+    subtitle: 'International Standard · 40,000 SQM',
+    units: '40,000',
+    unitsUnit: 'sqm',
+    gfa: '—',
+    type: 'Sport',
+    desc: 'FIP-standard international polo field. The centrepiece of the estate and the beating heart of the Project XIX experience.',
+    panoImage: null,           // → 'assets/panos/polo-field.jpg'
+    panoGradient: 'linear-gradient(160deg, #1a3a22 0%, #2d5a3d 30%, #4a7c59 60%, #6b9e74 100%)',
+    flyOrigin: { x: 50, y: 47 },  // % of viewport — used for fly-in zoom origin
+  },
+  'clubhouse': {
+    name: 'Clubhouse & Pavilion',
+    subtitle: 'Imperial Pavilion · 3,419 SQM',
+    units: '3,419',
+    unitsUnit: 'sqm',
+    gfa: '3,419',
+    type: 'Hospitality',
+    desc: 'Three-floor clubhouse with sports lounge, restaurant & bar, hotel check-in, 8 skyboxes with unobstructed polo views, and a tiered spectator stand.',
+    panoImage: null,           // → 'assets/panos/clubhouse.jpg'
+    panoGradient: 'linear-gradient(150deg, #0e1a12 0%, #1c3a2a 40%, #2d5a3d 100%)',
+    flyOrigin: { x: 50, y: 84 },
+  },
+  'villa-west': {
+    name: 'Premium Villas',
+    subtitle: 'West Flank · Polo-View',
+    units: '43',
+    unitsUnit: 'units',
+    gfa: '330',
+    type: '3 Bed + Maids',
+    desc: 'Three-bedroom polo-view villas on the western flank of the field. Each unit features undercroft parking, private garden, and direct polo field sightlines.',
+    panoImage: null,           // → 'assets/panos/villa-west.jpg'
+    panoGradient: 'linear-gradient(140deg, #1a2c20 0%, #2a4a34 50%, #1c3a2a 100%)',
+    flyOrigin: { x: 22, y: 47 },
+  },
+  'villa-east': {
+    name: 'Premium Villas',
+    subtitle: 'East Flank · Polo-View',
+    units: '43',
+    unitsUnit: 'units',
+    gfa: '330',
+    type: '3 Bed + Maids',
+    desc: 'Three-bedroom polo-view villas on the eastern flank with views over the proposed lake and the training grounds beyond.',
+    panoImage: null,           // → 'assets/panos/villa-east.jpg'
+    panoGradient: 'linear-gradient(160deg, #172818 0%, #2a4a34 60%, #3d6645 100%)',
+    flyOrigin: { x: 78, y: 47 },
+  },
+  'loft-apts': {
+    name: 'Loft Apartments',
+    subtitle: 'Northern Crescent · 96 Units',
+    units: '96',
+    unitsUnit: 'units',
+    gfa: '125',
+    type: '2 Bed Loft',
+    desc: 'Two-bedroom loft terrace apartments arranged in a crescent along the northern edge, with rooftop terraces overlooking the full estate. Designed for residents, Airbnb and corporate leases.',
+    panoImage: null,           // → 'assets/panos/loft-apts.jpg'
+    panoGradient: 'linear-gradient(170deg, #0f1e14 0%, #1c3a2a 45%, #2d5a3d 100%)',
+    flyOrigin: { x: 50, y: 14 },
+  },
+  'stables': {
+    name: 'Horse Stables',
+    subtitle: '4 Blocks · 56 Stalls',
+    units: '56',
+    unitsUnit: 'stalls',
+    gfa: '—',
+    type: 'Equestrian',
+    desc: 'Four stable blocks housing 14 stalls each. Purpose-built with tack rooms, vet access, quarantine paddocks, and a dedicated truck access drive.',
+    panoImage: null,           // → 'assets/panos/stables.jpg'
+    panoGradient: 'linear-gradient(155deg, #1a1408 0%, #3a2c10 45%, #5a4820 100%)',
+    flyOrigin: { x: 10, y: 75 },
+  },
+  'training': {
+    name: 'Training Field',
+    subtitle: '5,000 SQM · Practice Ground',
+    units: '5,000',
+    unitsUnit: 'sqm',
+    gfa: '—',
+    type: 'Equestrian',
+    desc: 'Full training field with 30, 40 and 60-yard practice zones, polo academy facilities, and quarantine paddocks adjacent to the stables.',
+    panoImage: null,           // → 'assets/panos/training.jpg'
+    panoGradient: 'linear-gradient(145deg, #152810 0%, #254a1e 50%, #3a6e30 100%)',
+    flyOrigin: { x: 20, y: 88 },
+  },
+  'paddock': {
+    name: 'Paddock',
+    subtitle: '1,645 SQM · Exercise & Display',
+    units: '1,645',
+    unitsUnit: 'sqm',
+    gfa: '—',
+    type: 'Equestrian',
+    desc: 'Display and exercise paddock adjacent to the eastern training ground. Open to club members and tournament guests.',
+    panoImage: null,           // → 'assets/panos/paddock.jpg'
+    panoGradient: 'linear-gradient(135deg, #1a2810 0%, #2d4a20 50%, #4a6e38 100%)',
+    flyOrigin: { x: 90, y: 78 },
+  },
+};
+
+const ZONE_ORDER = [
+  'polo-field','clubhouse','villa-west','villa-east',
+  'loft-apts','stables','training','paddock'
+];
+
+/* ─── State ─────────────────────────────────────── */
+let currentZone = null;
+let currentView = '2d';
+let pannellumViewer = null;
+let drawerOpen = false;
+let hintDismissed = false;
+
+/* ─── Init ──────────────────────────────────────── */
+window.addEventListener('load', () => {
+  // Build zone nav dots
+  const dotsContainer = document.getElementById('zone-nav-dots');
+  ZONE_ORDER.forEach(id => {
+    const dot = document.createElement('div');
+    dot.className = 'zone-dot';
+    dot.id = `dot-${id}`;
+    dot.onclick = () => enterZone(id);
+    const tip = document.createElement('div');
+    tip.className = 'zone-dot-tip';
+    tip.textContent = ZONES[id].name;
+    dot.appendChild(tip);
+    dotsContainer.appendChild(dot);
+  });
+
+  // Dismiss hint on first click
+  document.getElementById('map-container').addEventListener('click', () => {
+    if (!hintDismissed) {
+      document.getElementById('map-hint').style.opacity = '0';
+      hintDismissed = true;
+    }
+  });
+
+  // Loading → map after animation
+  setTimeout(() => {
+    document.getElementById('screen-loading').classList.add('hidden');
+    document.getElementById('screen-map').classList.remove('hidden');
+  }, 1800);
+});
+
+/* ─── View toggle (2D / 3D) ─────────────────────── */
+function setView(v) {
+  currentView = v;
+  document.getElementById('plan-2d').classList.toggle('hidden', v !== '2d');
+  document.getElementById('plan-3d').classList.toggle('hidden', v !== '3d');
+  document.getElementById('btn-2d').classList.toggle('active', v === '2d');
+  document.getElementById('btn-3d').classList.toggle('active', v === '3d');
+}
+
+/* ─── Fly-in + zone entry ───────────────────────── */
+function enterZone(zoneId) {
+  if (!ZONES[zoneId]) return;
+  currentZone = zoneId;
+  const zone = ZONES[zoneId];
+  const origin = zone.flyOrigin;
+
+  /* 1. Zoom map toward clicked zone */
+  const mapContainer = document.getElementById('map-container');
+  mapContainer.style.transformOrigin = `${origin.x}% ${origin.y}%`;
+  mapContainer.style.transition = 'transform .55s cubic-bezier(.4,0,.2,1)';
+  mapContainer.style.transform = 'scale(2.8)';
+
+  /* 2. Fade overlay in */
+  const overlay = document.getElementById('fly-overlay');
+  setTimeout(() => {
+    overlay.classList.add('active');
+  }, 300);
+
+  /* 3. Switch to pano screen */
+  setTimeout(() => {
+    mapContainer.style.transform = '';
+    mapContainer.style.transition = '';
+    document.getElementById('screen-map').classList.add('hidden');
+    document.getElementById('screen-pano').classList.remove('hidden');
+    loadPanorama(zoneId);
+    overlay.classList.remove('active');
+    openDrawer();
+  }, 700);
+}
+
+/* ─── Load panorama ─────────────────────────────── */
+function loadPanorama(zoneId) {
+  const zone = ZONES[zoneId];
+
+  // Update UI text
+  document.getElementById('pano-title').textContent = zone.name;
+  document.getElementById('pano-sub').textContent = zone.subtitle.toUpperCase() + ' · DRAG TO LOOK AROUND';
+  document.getElementById('pano-ph-name').textContent = zone.name;
+
+  // Update info drawer
+  document.getElementById('info-name').textContent = zone.name;
+  document.getElementById('info-units').childNodes[0].nodeValue = zone.units;
+  document.getElementById('info-units-unit').textContent = ' ' + zone.unitsUnit;
+  document.getElementById('info-gfa').childNodes[0].nodeValue = zone.gfa;
+  document.getElementById('info-type').textContent = zone.type;
+
+  // Update nav dots
+  document.querySelectorAll('.zone-dot').forEach(d => d.classList.remove('active'));
+  const activeDot = document.getElementById(`dot-${zoneId}`);
+  if (activeDot) activeDot.classList.add('active');
+
+  // Destroy previous viewer
+  if (pannellumViewer) {
+    try { pannellumViewer.destroy(); } catch(e) {}
+    pannellumViewer = null;
+  }
+
+  const container = document.getElementById('pannellum-container');
+  const placeholder = document.getElementById('pano-placeholder');
+
+  if (zone.panoImage) {
+    // Real panorama
+    placeholder.style.display = 'none';
+    pannellumViewer = pannellum.viewer('pannellum-container', {
+      type: 'equirectangular',
+      panorama: zone.panoImage,
+      autoLoad: true,
+      autoRotate: -1.5,
+      autoRotateInactivityDelay: 3000,
+      compass: false,
+      showControls: false,
+      mouseZoom: true,
+      hfov: 90,
+      minHfov: 50,
+      maxHfov: 120,
+    });
+  } else {
+    // Placeholder gradient (no real image yet)
+    placeholder.style.display = 'flex';
+    container.style.background = zone.panoGradient;
+    // Subtle animated fake-parallax on the placeholder
+    animatePlaceholder(container, zone.panoGradient);
+  }
+}
+
+/* Lightweight placeholder animation (simulates slight panning) */
+function animatePlaceholder(container, gradient) {
+  let angle = 160;
+  let dir = 1;
+  if (container._placeholderInterval) {
+    clearInterval(container._placeholderInterval);
+  }
+  container._placeholderInterval = setInterval(() => {
+    angle += dir * 0.15;
+    if (angle > 180 || angle < 140) dir *= -1;
+    // Reconstruct gradient with animated angle
+    const base = gradient.replace(/\d+deg/, `${angle.toFixed(1)}deg`);
+    container.style.background = base;
+  }, 40);
+}
+
+/* ─── Exit pano → map ───────────────────────────── */
+function exitPano() {
+  // Fade overlay briefly
+  const overlay = document.getElementById('fly-overlay');
+  overlay.classList.add('active');
+
+  setTimeout(() => {
+    // Clean up pano
+    if (pannellumViewer) {
+      try { pannellumViewer.destroy(); } catch(e) {}
+      pannellumViewer = null;
+    }
+    const container = document.getElementById('pannellum-container');
+    if (container._placeholderInterval) {
+      clearInterval(container._placeholderInterval);
+    }
+    container.style.background = '';
+
+    document.getElementById('screen-pano').classList.add('hidden');
+    document.getElementById('screen-map').classList.remove('hidden');
+    closeDrawer();
+    overlay.classList.remove('active');
+  }, 400);
+}
+
+/* ─── Drawer ────────────────────────────────────── */
+function openDrawer() {
+  drawerOpen = true;
+  document.getElementById('zone-drawer').classList.add('open');
+}
+function closeDrawer() {
+  drawerOpen = false;
+  document.getElementById('zone-drawer').classList.remove('open');
+}
+function toggleDrawer() {
+  drawerOpen ? closeDrawer() : openDrawer();
+}
+
+/* ─── Zone keyboard navigation ──────────────────── */
+document.addEventListener('keydown', (e) => {
+  if (!currentZone) return;
+  const idx = ZONE_ORDER.indexOf(currentZone);
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    enterZone(ZONE_ORDER[(idx + 1) % ZONE_ORDER.length]);
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    enterZone(ZONE_ORDER[(idx - 1 + ZONE_ORDER.length) % ZONE_ORDER.length]);
+  } else if (e.key === 'Escape') {
+    exitPano();
+  }
+});
+
+/* ─── CTA ───────────────────────────────────────── */
+function registerInterest() {
+  // Replace with your Formspree URL or CRM link
+  const zone = currentZone ? ZONES[currentZone].name : 'Project XIX';
+  const subject = encodeURIComponent(`Register Interest — ${zone}`);
+  window.open(`mailto:info@mixtafrica.com?subject=${subject}`, '_blank');
+}
+</script>
+</body>
+</html>
