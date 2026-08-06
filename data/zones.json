@@ -1,0 +1,98 @@
+{
+  "polo-field": {
+    "name": "Polo Field",
+    "subtitle": "International Standard · 40,000 SQM",
+    "units": "40,000",
+    "unitsUnit": "sqm",
+    "gfa": "—",
+    "type": "Sport",
+    "tagline": "The Sport of Kings — at the heart of West Africa's premier estate.",
+    "panoImage": null,
+    "panoNote": "Replace null with: assets/panos/polo-field.jpg",
+    "flyOrigin": { "x": 50, "y": 47 }
+  },
+  "clubhouse": {
+    "name": "Clubhouse & Pavilion",
+    "subtitle": "Imperial Pavilion · 3,419 SQM",
+    "units": "3,419",
+    "unitsUnit": "sqm",
+    "gfa": "3,419",
+    "type": "Hospitality",
+    "tagline": "Three floors of world-class hospitality overlooking the polo field.",
+    "panoImage": null,
+    "panoNote": "Replace null with: assets/panos/clubhouse.jpg",
+    "flyOrigin": { "x": 50, "y": 84 }
+  },
+  "villa-west": {
+    "name": "Premium Villas (West)",
+    "subtitle": "West Flank · Polo-View · 43 Units",
+    "units": "43",
+    "unitsUnit": "units",
+    "gfa": "330",
+    "type": "3 Bed + Maids",
+    "tagline": "Wake up to the polo field. Fall asleep to the sound of Lagos.",
+    "panoImage": null,
+    "panoNote": "Replace null with: assets/panos/villa-west.jpg",
+    "flyOrigin": { "x": 22, "y": 47 }
+  },
+  "villa-east": {
+    "name": "Premium Villas (East)",
+    "subtitle": "East Flank · Lake View · 43 Units",
+    "units": "43",
+    "unitsUnit": "units",
+    "gfa": "330",
+    "type": "3 Bed + Maids",
+    "tagline": "Polo field on one side. The proposed lake on the other.",
+    "panoImage": null,
+    "panoNote": "Replace null with: assets/panos/villa-east.jpg",
+    "flyOrigin": { "x": 78, "y": 47 }
+  },
+  "loft-apts": {
+    "name": "Loft Apartments",
+    "subtitle": "Northern Crescent · 96 Units",
+    "units": "96",
+    "unitsUnit": "units",
+    "gfa": "125",
+    "type": "2 Bed Loft",
+    "tagline": "Modern loft living with rooftop terraces overlooking the full estate.",
+    "panoImage": null,
+    "panoNote": "Replace null with: assets/panos/loft-apts.jpg",
+    "flyOrigin": { "x": 50, "y": 14 }
+  },
+  "stables": {
+    "name": "Horse Stables",
+    "subtitle": "4 Blocks · 56 Stalls Total",
+    "units": "56",
+    "unitsUnit": "stalls",
+    "gfa": "—",
+    "type": "Equestrian",
+    "tagline": "Purpose-built to FIP standards. Where champions are stabled.",
+    "panoImage": null,
+    "panoNote": "Replace null with: assets/panos/stables.jpg",
+    "flyOrigin": { "x": 10, "y": 75 }
+  },
+  "training": {
+    "name": "Training Field",
+    "subtitle": "5,000 SQM · Practice Ground",
+    "units": "5,000",
+    "unitsUnit": "sqm",
+    "gfa": "—",
+    "type": "Equestrian",
+    "tagline": "Full training facilities for the estate's polo academy programme.",
+    "panoImage": null,
+    "panoNote": "Replace null with: assets/panos/training.jpg",
+    "flyOrigin": { "x": 20, "y": 88 }
+  },
+  "paddock": {
+    "name": "Paddock",
+    "subtitle": "1,645 SQM · Exercise & Display",
+    "units": "1,645",
+    "unitsUnit": "sqm",
+    "gfa": "—",
+    "type": "Equestrian",
+    "tagline": "Open to members and tournament guests. The prelude to the match.",
+    "panoImage": null,
+    "panoNote": "Replace null with: assets/panos/paddock.jpg",
+    "flyOrigin": { "x": 90, "y": 78 }
+  }
+}
