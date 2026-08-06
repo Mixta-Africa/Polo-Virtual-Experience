@@ -491,167 +491,210 @@
   <!-- MAP -->
   <div class="map-container" id="map-container">
 
-    <!-- Plan images: replace src with actual image paths -->
-    <!-- 2D Plan: assets/plan-2d.jpg -->
-    <!-- 3D Aerial: assets/plan-3d.jpg -->
-    <div class="plan-img plan-2d-placeholder" id="plan-2d"
-      style="position:absolute;inset:0;width:100%;height:100%;">
-    </div>
-    <div class="plan-img plan-3d-placeholder hidden" id="plan-3d"
-      style="position:absolute;inset:0;width:100%;height:100%;">
-    </div>
+    <!--
+      Plan images.
+      The plan-2d.png you provided is wired in below.
+      For 3D aerial, export the 3D massing slide from the deck
+      and save as assets/plan-3d.jpg.
+    -->
+    <img class="plan-img" id="plan-2d"
+      src="assets/plan-2d.png"
+      alt="Project XIX 2D Masterplan"
+      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;"
+      onerror="this.style.display='none';document.getElementById('plan-2d-fb').style.display='block'"/>
+    <!-- Fallback gradient if image path not found yet -->
+    <div id="plan-2d-fb" class="plan-img plan-2d-placeholder"
+      style="position:absolute;inset:0;width:100%;height:100%;display:none;"></div>
+
+    <img class="plan-img hidden" id="plan-3d"
+      src="assets/plan-3d.jpg"
+      alt="Project XIX 3D Aerial"
+      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;"
+      onerror="this.style.display='none';document.getElementById('plan-3d-fb').style.display='block'"/>
+    <div id="plan-3d-fb" class="plan-img plan-3d-placeholder hidden"
+      style="position:absolute;inset:0;width:100%;height:100%;display:none;"></div>
 
     <!--
-      ZONE HOTSPOT OVERLAY
-      ─────────────────────────────────────────────────────
-      Positions are percentages of the viewport mapped to the
-      Updated Masterplan layout from the deck.
+      ═══════════════════════════════════════════════════════
+      ZONE HOTSPOT OVERLAY — CALIBRATED TO plan-2d.png
+      ═══════════════════════════════════════════════════════
+      SVG viewBox: 0 0 1400 700  (matches plan-2d.png 2:1 ratio)
+      preserveAspectRatio: xMidYMid slice — fills viewport, same
+      as the img behind it, so coordinates stay aligned.
 
-      The SVG uses a 1000×620 internal coordinate space.
-      Each zone polygon approximates its position on the plan.
-      Replace polygon points with precise coordinates once the
-      actual plan image is dropped in.
+      All polygon points derived from pixel analysis of plan-2d.png:
 
-      Zones (from the Updated Masterplan slide):
-        - Polo Field (centre)
-        - Clubhouse (south-centre)
-        - Premium Villas North (top row)
-        - Premium Villas East/West (flanking field)
-        - Loft Apartments (north strip + blocks of flats)
-        - Horse Stables (south-west corner)
-        - Training Field (south-west)
-        - Paddock (south-east)
+      PLAN ANATOMY (x left→right, y top→bottom in 1400×700 space):
+      ┌──────────────────────────────────────────────────────┐
+      │ [Training]  [Loft Apts — full crescent north strip]  │
+      │ [Field  ]   [Crescent premium villas]   [Green Area] │
+      │             [Proposed Lake — blue arc]               │
+      │ [Stables]   [Villas W] [POLO FIELD] [Villas E] [Pad] │
+      │             [Villas W] [           ] [Villas E]      │
+      │             [Loft blk] [           ] [Loft blk][Com] │
+      │ [Serv]      [Clubhouse — south centre]               │
+      └──────────────────────────────────────────────────────┘
     -->
     <svg class="hotspot-svg" id="hotspot-svg"
-      viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid slice"
+      viewBox="0 0 1400 700" preserveAspectRatio="xMidYMid slice"
       xmlns="http://www.w3.org/2000/svg">
 
-      <!-- POLO FIELD (centre) -->
+      <!-- ── POLO FIELD ─────────────────────────────────────
+           Large rounded rect centre. Brown surround track included.
+           Approx x:310–880, y:165–620 on the plan.
+      ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-polo-field"
         data-zone="polo-field"
-        points="290,155 680,155 720,455 250,455"
+        points="318,168 878,168 878,618 318,618"
         onclick="enterZone('polo-field')"/>
       <g class="zone-label-group" id="label-polo-field">
-        <rect x="400" y="270" width="200" height="54" rx="6"
-          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
-        <text x="500" y="291" text-anchor="middle"
-          font-family="Cormorant Garamond, serif" font-size="18" font-weight="400"
+        <rect x="488" y="360" width="224" height="58" rx="7"
+          fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
+        <text x="600" y="383" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="20" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Polo Field</text>
-        <text x="500" y="312" text-anchor="middle"
+        <text x="600" y="406" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.8)" letter-spacing="2">40,000 SQM · INTERNATIONAL STANDARD</text>
+          fill="rgba(201,168,76,.85)" letter-spacing="2">40,000 SQM · INT'L STANDARD</text>
       </g>
 
-      <!-- CLUBHOUSE (south-centre, below the field) -->
-      <polygon class="zone-poly" id="zone-clubhouse"
-        data-zone="clubhouse"
-        points="350,456 650,456 650,535 350,535"
-        onclick="enterZone('clubhouse')"/>
-      <g class="zone-label-group" id="label-clubhouse">
-        <rect x="420" y="468" width="160" height="48" rx="6"
-          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
-        <text x="500" y="488" text-anchor="middle"
-          font-family="Cormorant Garamond, serif" font-size="17" font-weight="400"
-          fill="#F5F0E8" letter-spacing="1">Clubhouse</text>
-        <text x="500" y="508" text-anchor="middle"
-          font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.8)" letter-spacing="2">3,419 SQM · 3 FLOORS</text>
-      </g>
+      <!-- ── PROPOSED LAKE ──────────────────────────────────
+           Blue arc shape, north of field.
+           Approx x:420–760, y:110–175.
+      ──────────────────────────────────────────────────────── -->
+      <!-- Lake is a visual feature, not a clickable zone — no polygon needed -->
 
-      <!-- PREMIUM VILLAS — WEST (left of field) -->
-      <polygon class="zone-poly" id="zone-villa-west"
-        data-zone="villa-west"
-        points="145,165 285,165 285,455 145,455"
-        onclick="enterZone('villa-west')"/>
-      <g class="zone-label-group" id="label-villa-west">
-        <rect x="108" y="280" width="170" height="54" rx="6"
-          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
-        <text x="193" y="302" text-anchor="middle"
-          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
-          fill="#F5F0E8" letter-spacing="1">Premium Villas</text>
-        <text x="193" y="322" text-anchor="middle"
-          font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.8)" letter-spacing="2">3 BED · POLO VIEW</text>
-      </g>
-
-      <!-- PREMIUM VILLAS — EAST (right of field) -->
-      <polygon class="zone-poly" id="zone-villa-east"
-        data-zone="villa-east"
-        points="720,165 855,165 855,455 720,455"
-        onclick="enterZone('villa-east')"/>
-      <g class="zone-label-group" id="label-villa-east">
-        <rect x="722" y="280" width="170" height="54" rx="6"
-          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
-        <text x="807" y="302" text-anchor="middle"
-          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
-          fill="#F5F0E8" letter-spacing="1">Premium Villas</text>
-        <text x="807" y="322" text-anchor="middle"
-          font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.8)" letter-spacing="2">3 BED · POLO VIEW</text>
-      </g>
-
-      <!-- LOFT APARTMENTS (north strip) -->
+      <!-- ── LOFT APARTMENTS — NORTH CRESCENT ──────────────
+           Full top strip incl crescent villas row.
+           Approx x:215–1175, y:20–162.
+      ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-loft-apts"
         data-zone="loft-apts"
-        points="145,55 855,55 855,150 145,150"
+        points="215,22 1175,22 1175,162 215,162"
         onclick="enterZone('loft-apts')"/>
       <g class="zone-label-group" id="label-loft-apts">
-        <rect x="415" y="72" width="170" height="52" rx="6"
-          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
-        <text x="500" y="93" text-anchor="middle"
-          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
+        <rect x="536" y="62" width="188" height="56" rx="7"
+          fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
+        <text x="630" y="85" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="18" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Loft Apartments</text>
-        <text x="500" y="114" text-anchor="middle"
+        <text x="630" y="106" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.8)" letter-spacing="2">96 UNITS · 125 SQM</text>
+          fill="rgba(201,168,76,.85)" letter-spacing="2">NORTHERN CRESCENT · 96 UNITS</text>
       </g>
 
-      <!-- TRAINING FIELD (south-west) -->
+      <!-- ── PREMIUM VILLAS — WEST ──────────────────────────
+           Column left of field, incl loft apartment blocks west.
+           Approx x:215–314, y:162–622.
+      ──────────────────────────────────────────────────────── -->
+      <polygon class="zone-poly" id="zone-villa-west"
+        data-zone="villa-west"
+        points="215,162 314,162 314,622 215,622"
+        onclick="enterZone('villa-west')"/>
+      <g class="zone-label-group" id="label-villa-west">
+        <rect x="100" y="355" width="176" height="58" rx="7"
+          fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
+        <text x="188" y="378" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Premium Villas</text>
+        <text x="188" y="398" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.85)" letter-spacing="2">3 BED · POLO VIEW</text>
+      </g>
+
+      <!-- ── PREMIUM VILLAS — EAST ──────────────────────────
+           Column right of field, incl loft blocks east.
+           Approx x:882–980, y:162–622.
+      ──────────────────────────────────────────────────────── -->
+      <polygon class="zone-poly" id="zone-villa-east"
+        data-zone="villa-east"
+        points="882,162 980,162 980,622 882,622"
+        onclick="enterZone('villa-east')"/>
+      <g class="zone-label-group" id="label-villa-east">
+        <rect x="984" y="355" width="176" height="58" rx="7"
+          fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
+        <text x="1072" y="378" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Premium Villas</text>
+        <text x="1072" y="398" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.85)" letter-spacing="2">3 BED · POLO VIEW</text>
+      </g>
+
+      <!-- ── CLUBHOUSE ───────────────────────────────────────
+           South centre, below polo field.
+           Approx x:430–770, y:625–690.
+      ──────────────────────────────────────────────────────── -->
+      <polygon class="zone-poly" id="zone-clubhouse"
+        data-zone="clubhouse"
+        points="430,625 770,625 770,690 430,690"
+        onclick="enterZone('clubhouse')"/>
+      <g class="zone-label-group" id="label-clubhouse">
+        <rect x="490" y="630" width="180" height="52" rx="7"
+          fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
+        <text x="580" y="653" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="18" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Clubhouse</text>
+        <text x="580" y="673" text-anchor="middle"
+          font-family="Inter, sans-serif" font-size="10" font-weight="400"
+          fill="rgba(201,168,76,.85)" letter-spacing="2">3,419 SQM · 3 FLOORS</text>
+      </g>
+
+      <!-- ── TRAINING FIELD ─────────────────────────────────
+           Top-left rectangle (large green field).
+           Approx x:22–200, y:22–465.
+      ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-training"
         data-zone="training"
-        points="40,536 290,536 290,600 40,600"
+        points="22,22 200,22 200,465 22,465"
         onclick="enterZone('training')"/>
       <g class="zone-label-group" id="label-training">
-        <rect x="42" y="542" width="170" height="48" rx="6"
-          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
-        <text x="127" y="563" text-anchor="middle"
-          font-family="Cormorant Garamond, serif" font-size="15" font-weight="400"
+        <rect x="24" y="210" width="170" height="56" rx="7"
+          fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
+        <text x="109" y="233" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Training Field</text>
-        <text x="127" y="582" text-anchor="middle"
+        <text x="109" y="254" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.8)" letter-spacing="2">5,000 SQM</text>
+          fill="rgba(201,168,76,.85)" letter-spacing="2">POLO ACADEMY · 5,000 SQM</text>
       </g>
 
-      <!-- STABLES (south-west cluster) -->
+      <!-- ── HORSE STABLES ──────────────────────────────────
+           Bottom-left cluster: stables + quarantine + paddocks rows.
+           Approx x:22–195, y:468–635.
+      ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-stables"
         data-zone="stables"
-        points="40,456 140,456 140,532 40,532"
+        points="22,468 195,468 195,635 22,635"
         onclick="enterZone('stables')"/>
       <g class="zone-label-group" id="label-stables">
-        <rect x="0" y="472" width="145" height="48" rx="6"
-          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
-        <text x="72" y="493" text-anchor="middle"
-          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
-          fill="#F5F0E8" letter-spacing="1">Stables</text>
-        <text x="72" y="513" text-anchor="middle"
+        <rect x="24" y="528" width="172" height="54" rx="7"
+          fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
+        <text x="110" y="549" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="17" font-weight="400"
+          fill="#F5F0E8" letter-spacing="1">Horse Stables</text>
+        <text x="110" y="569" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.8)" letter-spacing="2">4 BLOCKS · 56 STALLS</text>
+          fill="rgba(201,168,76,.85)" letter-spacing="2">4 BLOCKS · 56 STALLS</text>
       </g>
 
-      <!-- PADDOCK (south-east) -->
+      <!-- ── PADDOCK ─────────────────────────────────────────
+           Right side mid: the green paddock square east of villas.
+           Approx x:984–1175, y:260–520.
+      ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-paddock"
         data-zone="paddock"
-        points="856,456 960,456 960,600 856,600"
+        points="984,260 1175,260 1175,520 984,520"
         onclick="enterZone('paddock')"/>
       <g class="zone-label-group" id="label-paddock">
-        <rect x="820" y="500" width="140" height="48" rx="6"
-          fill="rgba(28,58,42,0.88)" stroke="rgba(201,168,76,.5)" stroke-width="1"/>
-        <text x="890" y="520" text-anchor="middle"
-          font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
+        <rect x="986" y="358" width="150" height="54" rx="7"
+          fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
+        <text x="1061" y="379" text-anchor="middle"
+          font-family="Cormorant Garamond, serif" font-size="17" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Paddock</text>
-        <text x="890" y="540" text-anchor="middle"
+        <text x="1061" y="399" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.8)" letter-spacing="2">1,645 SQM</text>
+          fill="rgba(201,168,76,.85)" letter-spacing="2">EXERCISE · 1,645 SQM</text>
       </g>
 
     </svg>
@@ -772,9 +815,14 @@
 <script>
 /* ═══════════════════════════════════════════════════════════
    ZONE DATA
-   Replace panoImage values with paths to your equirectangular
-   panoramic images once generated. Leave as null to use the
-   animated gradient placeholder.
+   ─────────────────────────────────────────────────────────
+   panoImage: path to equirectangular JPG (2:1 ratio, min
+   4096×2048px). Set to null to use animated gradient
+   placeholder while images are being generated.
+
+   STATUS GUIDE:
+     null              → placeholder (gradient animation)
+     'assets/panos/x'  → real panorama loaded by Pannellum
 ═══════════════════════════════════════════════════════════ */
 const ZONES = {
   'polo-field': {
@@ -785,9 +833,12 @@ const ZONES = {
     gfa: '—',
     type: 'Sport',
     desc: 'FIP-standard international polo field. The centrepiece of the estate and the beating heart of the Project XIX experience.',
-    panoImage: null,           // → 'assets/panos/polo-field.jpg'
+    panoImage: 'assets/panos/polo-field.jpg',
     panoGradient: 'linear-gradient(160deg, #1a3a22 0%, #2d5a3d 30%, #4a7c59 60%, #6b9e74 100%)',
-    flyOrigin: { x: 50, y: 47 },  // % of viewport — used for fly-in zoom origin
+    panoYaw: 0,
+    panoHfov: 90,
+    // flyOrigin: centre of polo field on the plan (x:43%, y:56% of viewport)
+    flyOrigin: { x: 43, y: 56 },
   },
   'clubhouse': {
     name: 'Clubhouse & Pavilion',
@@ -797,9 +848,12 @@ const ZONES = {
     gfa: '3,419',
     type: 'Hospitality',
     desc: 'Three-floor clubhouse with sports lounge, restaurant & bar, hotel check-in, 8 skyboxes with unobstructed polo views, and a tiered spectator stand.',
-    panoImage: null,           // → 'assets/panos/clubhouse.jpg'
+    panoImage: 'assets/panos/clubhouse.jpg',
     panoGradient: 'linear-gradient(150deg, #0e1a12 0%, #1c3a2a 40%, #2d5a3d 100%)',
-    flyOrigin: { x: 50, y: 84 },
+    panoYaw: 180,
+    panoHfov: 85,
+    // flyOrigin: clubhouse strip south of polo field (x:43%, y:93%)
+    flyOrigin: { x: 43, y: 93 },
   },
   'villa-west': {
     name: 'Premium Villas',
@@ -809,21 +863,27 @@ const ZONES = {
     gfa: '330',
     type: '3 Bed + Maids',
     desc: 'Three-bedroom polo-view villas on the western flank of the field. Each unit features undercroft parking, private garden, and direct polo field sightlines.',
-    panoImage: null,           // → 'assets/panos/villa-west.jpg'
+    panoImage: 'assets/panos/villa-west.jpg',
     panoGradient: 'linear-gradient(140deg, #1a2c20 0%, #2a4a34 50%, #1c3a2a 100%)',
-    flyOrigin: { x: 22, y: 47 },
+    panoYaw: 90,
+    panoHfov: 80,
+    // flyOrigin: villa west column (x:21%, y:55%)
+    flyOrigin: { x: 21, y: 55 },
   },
   'villa-east': {
     name: 'Premium Villas',
-    subtitle: 'East Flank · Polo-View',
+    subtitle: 'East Flank · Lake View',
     units: '43',
     unitsUnit: 'units',
     gfa: '330',
     type: '3 Bed + Maids',
     desc: 'Three-bedroom polo-view villas on the eastern flank with views over the proposed lake and the training grounds beyond.',
-    panoImage: null,           // → 'assets/panos/villa-east.jpg'
+    panoImage: 'assets/panos/villa-east.jpg',
     panoGradient: 'linear-gradient(160deg, #172818 0%, #2a4a34 60%, #3d6645 100%)',
-    flyOrigin: { x: 78, y: 47 },
+    panoYaw: 270,
+    panoHfov: 80,
+    // flyOrigin: villa east column (x:67%, y:55%)
+    flyOrigin: { x: 67, y: 55 },
   },
   'loft-apts': {
     name: 'Loft Apartments',
@@ -833,9 +893,12 @@ const ZONES = {
     gfa: '125',
     type: '2 Bed Loft',
     desc: 'Two-bedroom loft terrace apartments arranged in a crescent along the northern edge, with rooftop terraces overlooking the full estate. Designed for residents, Airbnb and corporate leases.',
-    panoImage: null,           // → 'assets/panos/loft-apts.jpg'
+    panoImage: 'assets/panos/loft-apts.jpg',
     panoGradient: 'linear-gradient(170deg, #0f1e14 0%, #1c3a2a 45%, #2d5a3d 100%)',
-    flyOrigin: { x: 50, y: 14 },
+    panoYaw: 180,
+    panoHfov: 95,
+    // flyOrigin: northern crescent strip (x:43%, y:13%)
+    flyOrigin: { x: 43, y: 13 },
   },
   'stables': {
     name: 'Horse Stables',
@@ -845,9 +908,12 @@ const ZONES = {
     gfa: '—',
     type: 'Equestrian',
     desc: 'Four stable blocks housing 14 stalls each. Purpose-built with tack rooms, vet access, quarantine paddocks, and a dedicated truck access drive.',
-    panoImage: null,           // → 'assets/panos/stables.jpg'
+    panoImage: 'assets/panos/stables.jpg',
     panoGradient: 'linear-gradient(155deg, #1a1408 0%, #3a2c10 45%, #5a4820 100%)',
-    flyOrigin: { x: 10, y: 75 },
+    panoYaw: 0,
+    panoHfov: 85,
+    // flyOrigin: stables bottom-left cluster (x:9%, y:78%)
+    flyOrigin: { x: 9, y: 78 },
   },
   'training': {
     name: 'Training Field',
@@ -857,9 +923,12 @@ const ZONES = {
     gfa: '—',
     type: 'Equestrian',
     desc: 'Full training field with 30, 40 and 60-yard practice zones, polo academy facilities, and quarantine paddocks adjacent to the stables.',
-    panoImage: null,           // → 'assets/panos/training.jpg'
+    panoImage: 'assets/panos/training.jpg',
     panoGradient: 'linear-gradient(145deg, #152810 0%, #254a1e 50%, #3a6e30 100%)',
-    flyOrigin: { x: 20, y: 88 },
+    panoYaw: 45,
+    panoHfov: 90,
+    // flyOrigin: training field top-left (x:9%, y:33%)
+    flyOrigin: { x: 9, y: 33 },
   },
   'paddock': {
     name: 'Paddock',
@@ -869,9 +938,12 @@ const ZONES = {
     gfa: '—',
     type: 'Equestrian',
     desc: 'Display and exercise paddock adjacent to the eastern training ground. Open to club members and tournament guests.',
-    panoImage: null,           // → 'assets/panos/paddock.jpg'
+    panoImage: 'assets/panos/paddock.jpg',
     panoGradient: 'linear-gradient(135deg, #1a2810 0%, #2d4a20 50%, #4a6e38 100%)',
-    flyOrigin: { x: 90, y: 78 },
+    panoYaw: 180,
+    panoHfov: 90,
+    // flyOrigin: paddock right-centre (x:82%, y:54%)
+    flyOrigin: { x: 82, y: 54 },
   },
 };
 
@@ -989,28 +1061,96 @@ function loadPanorama(zoneId) {
   const placeholder = document.getElementById('pano-placeholder');
 
   if (zone.panoImage) {
-    // Real panorama
+    // ── Real panorama path is set — try to load it ──────────
     placeholder.style.display = 'none';
-    pannellumViewer = pannellum.viewer('pannellum-container', {
-      type: 'equirectangular',
-      panorama: zone.panoImage,
-      autoLoad: true,
-      autoRotate: -1.5,
-      autoRotateInactivityDelay: 3000,
-      compass: false,
-      showControls: false,
-      mouseZoom: true,
-      hfov: 90,
-      minHfov: 50,
-      maxHfov: 120,
-    });
+
+    // Show a subtle loading indicator while Pannellum fetches
+    const loadIndicator = document.createElement('div');
+    loadIndicator.id = 'pano-loading';
+    loadIndicator.style.cssText = [
+      'position:absolute;inset:0;z-index:2;display:flex;',
+      'align-items:center;justify-content:center;',
+      'background:var(--black);transition:opacity .5s ease;'
+    ].join('');
+    loadIndicator.innerHTML = `
+      <div style="text-align:center">
+        <div style="
+          width:40px;height:40px;border-radius:50%;
+          border:1.5px solid rgba(201,168,76,.15);
+          border-top-color:#C9A84C;
+          animation:spin .9s linear infinite;
+          margin:0 auto 14px;
+        "></div>
+        <div style="
+          font-family:'Inter',sans-serif;font-size:10px;
+          font-weight:400;letter-spacing:.18em;text-transform:uppercase;
+          color:rgba(245,240,232,.3);
+        ">Loading panorama</div>
+      </div>
+    `;
+    // Inject spin keyframe once
+    if (!document.getElementById('spin-style')) {
+      const s = document.createElement('style');
+      s.id = 'spin-style';
+      s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(s);
+    }
+    container.appendChild(loadIndicator);
+
+    try {
+      pannellumViewer = pannellum.viewer('pannellum-container', {
+        type: 'equirectangular',
+        panorama: zone.panoImage,
+        autoLoad: true,
+        autoRotate: -1.2,
+        autoRotateInactivityDelay: 4000,
+        compass: false,
+        showControls: false,
+        mouseZoom: true,
+        hfov: zone.panoHfov || 90,
+        minHfov: 50,
+        maxHfov: 130,
+        yaw: zone.panoYaw || 0,
+        pitch: 0,
+        minPitch: -60,
+        maxPitch: 60,
+        draggable: true,
+        disableKeyboardCtrl: false,
+        touchPanSpeedCoeffFactor: 1,
+        captureKeyboardShortcuts: false,
+      });
+
+      // Fade out loader once image is ready
+      pannellumViewer.on('load', () => {
+        loadIndicator.style.opacity = '0';
+        setTimeout(() => loadIndicator.remove(), 500);
+      });
+
+      // Graceful fallback: if image 404s or fails, show gradient
+      pannellumViewer.on('error', () => {
+        console.warn(`Panorama not found: ${zone.panoImage} — using gradient placeholder`);
+        try { pannellumViewer.destroy(); } catch(e) {}
+        pannellumViewer = null;
+        loadIndicator.remove();
+        showGradientPlaceholder(container, zone, placeholder);
+      });
+
+    } catch(e) {
+      loadIndicator.remove();
+      showGradientPlaceholder(container, zone, placeholder);
+    }
+
   } else {
-    // Placeholder gradient (no real image yet)
-    placeholder.style.display = 'flex';
-    container.style.background = zone.panoGradient;
-    // Subtle animated fake-parallax on the placeholder
-    animatePlaceholder(container, zone.panoGradient);
+    // ── No image path set — show gradient placeholder ───────
+    showGradientPlaceholder(container, zone, placeholder);
   }
+}
+
+/* Show gradient placeholder + animate it */
+function showGradientPlaceholder(container, zone, placeholder) {
+  placeholder.style.display = 'flex';
+  container.style.background = zone.panoGradient;
+  animatePlaceholder(container, zone.panoGradient);
 }
 
 /* Lightweight placeholder animation (simulates slight panning) */
@@ -1023,7 +1163,6 @@ function animatePlaceholder(container, gradient) {
   container._placeholderInterval = setInterval(() => {
     angle += dir * 0.15;
     if (angle > 180 || angle < 140) dir *= -1;
-    // Reconstruct gradient with animated angle
     const base = gradient.replace(/\d+deg/, `${angle.toFixed(1)}deg`);
     container.style.background = base;
   }, 40);
