@@ -1207,8 +1207,9 @@ function enterZone(zoneId) {
   const zone = ZONES[zoneId];
   const origin = zone.flyOrigin;
 
-  // Polo field opens the dedicated 3D A-Frame scene
-  if (zoneId === 'polo-field') {
+  // Zones with dedicated 3D scenes navigate straight to them
+  const SCENE_PAGES = { 'polo-field':'polo-field.html', 'clubhouse':'clubhouse.html', 'stables':'stables.html' };
+  if (SCENE_PAGES[zoneId]) {
     // Quick fly-in then navigate
     const mapContainer = document.getElementById('map-container');
     mapContainer.style.transformOrigin = `${origin.x}% ${origin.y}%`;
@@ -1219,7 +1220,7 @@ function enterZone(zoneId) {
     setTimeout(() => {
       mapContainer.style.transform = '';
       mapContainer.style.transition = '';
-      window.location.href = 'polo-field.html';
+      window.location.href = SCENE_PAGES[zoneId];
     }, 750);
     return;
   }
