@@ -97,11 +97,52 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
   text-align:center;line-height:1.35;color:rgba(245,240,232,.4);transition:color .2s}
 .vpb.on .vpnm{color:#C9A84C}
 
-/* Quality badge */
-#qbadge{position:fixed;bottom:88px;right:14px;z-index:100;
-  font-size:9px;letter-spacing:.14em;text-transform:uppercase;
-  color:rgba(201,168,76,.45);opacity:0;transition:opacity .5s ease 1s}
-#qbadge.show{opacity:1}
+/* ── Radar minimap ── */
+#radar{
+  position:fixed;bottom:96px;right:16px;z-index:100;
+  width:160px;height:104px;border-radius:10px;overflow:hidden;
+  border:1px solid rgba(201,168,76,.22);
+  background:rgba(6,14,6,.82);backdrop-filter:blur(10px);
+  opacity:0;transition:opacity .5s ease 1s;
+}
+#radar.show{opacity:1}
+#radar-canvas{display:block;width:160px;height:104px}
+#radar-lbl{
+  position:absolute;top:5px;left:8px;
+  font-size:8px;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(201,168,76,.5);pointer-events:none;
+}
+#radar-coords{
+  position:absolute;bottom:5px;left:8px;right:8px;
+  font-size:7px;letter-spacing:.06em;
+  color:rgba(245,240,232,.28);font-family:'Inter',monospace;
+  pointer-events:none;
+}
+
+/* ── Movement mode badge ── */
+#mode-badge{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);
+  z-index:100;font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(201,168,76,.6);background:rgba(6,14,6,.82);
+  border:1px solid rgba(201,168,76,.2);border-radius:20px;
+  padding:5px 14px;opacity:0;transition:opacity .3s;pointer-events:none;
+}
+#mode-badge.show{opacity:1}
+
+/* ── Touch joystick — mobile ── */
+#joy-move{
+  position:fixed;bottom:120px;left:24px;z-index:100;
+  width:90px;height:90px;border-radius:50%;
+  background:rgba(6,14,6,.45);border:1px solid rgba(201,168,76,.2);
+  display:none;touch-action:none;
+}
+#joy-move-knob{
+  position:absolute;width:34px;height:34px;border-radius:50%;
+  background:rgba(201,168,76,.4);border:1px solid rgba(201,168,76,.6);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  pointer-events:none;transition:background .15s;
+}
+@media(pointer:coarse){#joy-move{display:block}}
 </style>
 </head>
 <body>
@@ -124,7 +165,7 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
 </nav>
 
 <div id="xhair"></div>
-<div id="hint">Drag to look · Scroll to move · Click any zone</div>
+<div id="hint">Drag to look · W A S D to walk · Click canvas to lock mouse for free look</div>
 
 <div id="zi">
   <div class="zl" id="zl">Zone</div>
@@ -208,7 +249,18 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
   </div>
 </div>
 
-<div id="qbadge">Three.js PBR</div>
+<!-- Radar minimap -->
+<div id="radar">
+  <canvas id="radar-canvas" width="320" height="208"></canvas>
+  <div id="radar-lbl">Site Map</div>
+  <div id="radar-coords" id="radar-coords"></div>
+</div>
+
+<!-- Movement mode badge -->
+<div id="mode-badge">Free Walk · Click to lock mouse</div>
+
+<!-- Touch joystick (mobile) -->
+<div id="joy-move"><div id="joy-move-knob"></div></div>
 
 <script type="importmap">
 {
@@ -1084,37 +1136,209 @@ function showInfo(lbl, name, desc) {
 }
 
 /* ═══════════════════════════════════════════════
-   CAMERA CONTROLS — smooth orbit + look
+   CAMERA STATE
+   ─────────────────────────────────────────────
+   Two modes:
+   1. VP mode  — click a viewpoint button, camera
+      lerps to preset position
+   2. Free walk — WASD/arrows move, mouse look,
+      pointer lock for FPS feel
 ═══════════════════════════════════════════════ */
+
+// World bounds — keep player inside estate
+const BOUNDS = { xMin:-195, xMax:195, zMin:-270, zMax:215 };
+const EYE_HEIGHT = 1.65;
+
+let camPos    = new THREE.Vector3(0, EYE_HEIGHT, 0);
+let targetPos = new THREE.Vector3(0, EYE_HEIGHT, 0);
+let yaw   = Math.PI;  // looking south toward clubhouse
+let pitch = 0;
+const MAX_PITCH = Math.PI / 2.2;
+
+// Movement state
+const keys = {};
+let isPointerDown = false;
+let lastX = 0, lastY = 0;
+let pointerLocked = false;
+let freeWalk = false;          // true once user starts walking
+let lastInteract = Date.now();
+
+// Smooth velocity for walk feel
+const velocity = new THREE.Vector3();
+const WALK_SPEED  = 14;        // m/s
+const SPRINT_SPEED= 28;        // m/s (hold Shift)
+const DAMPING     = 0.82;      // per-frame velocity decay
+
+/* ── Pointer lock ── */
+const cvs = document.getElementById('c');
+
+cvs.addEventListener('click', () => {
+  if(!pointerLocked && freeWalk) {
+    cvs.requestPointerLock?.();
+    dismiss();
+  }
+});
+
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = document.pointerLockElement === cvs;
+  document.getElementById('mode-badge').textContent =
+    pointerLocked ? 'Free Walk · Esc to release' : 'Free Walk · Click to lock mouse';
+});
+
+document.addEventListener('mousemove', e => {
+  if(pointerLocked) {
+    yaw   -= e.movementX * 0.002;
+    pitch -= e.movementY * 0.002;
+    pitch  = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+    lastInteract = Date.now();
+  }
+});
+
+/* ── Drag look (non-locked) ── */
+cvs.addEventListener('mousedown', e => {
+  if(pointerLocked) return;
+  isPointerDown = true;
+  lastX = e.clientX; lastY = e.clientY;
+  dismiss();
+});
+window.addEventListener('mouseup', () => isPointerDown = false);
+window.addEventListener('mousemove', e => {
+  if(!isPointerDown || pointerLocked) return;
+  yaw   -= (e.clientX - lastX) * 0.003;
+  pitch -= (e.clientY - lastY) * 0.003;
+  pitch  = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+  lastX = e.clientX; lastY = e.clientY;
+  lastInteract = Date.now();
+});
+
+/* ── Touch look (right-side drag) ── */
+let touchLookId = null, tLookLX = 0, tLookLY = 0;
+cvs.addEventListener('touchstart', e => {
+  for(const t of e.changedTouches) {
+    if(t.clientX > window.innerWidth * 0.45 && touchLookId === null) {
+      touchLookId = t.identifier;
+      tLookLX = t.clientX; tLookLY = t.clientY;
+      dismiss();
+    }
+  }
+}, {passive:true});
+cvs.addEventListener('touchmove', e => {
+  for(const t of e.changedTouches) {
+    if(t.identifier === touchLookId) {
+      yaw   -= (t.clientX - tLookLX) * 0.004;
+      pitch -= (t.clientY - tLookLY) * 0.004;
+      pitch  = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+      tLookLX = t.clientX; tLookLY = t.clientY;
+      lastInteract = Date.now();
+    }
+  }
+}, {passive:true});
+cvs.addEventListener('touchend', e => {
+  for(const t of e.changedTouches) {
+    if(t.identifier === touchLookId) touchLookId = null;
+  }
+}, {passive:true});
+
+/* ── Gyroscope ── */
+if(window.DeviceOrientationEvent) {
+  let cal = null;
+  window.addEventListener('deviceorientation', e => {
+    if(!cal && e.gamma != null) cal = {b:e.beta, g:e.gamma};
+    if(cal && e.gamma != null) {
+      yaw   = -(e.gamma - cal.g) * 0.018 + Math.PI;
+      pitch = -(e.beta  - cal.b) * 0.014;
+      pitch  = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+    }
+  });
+}
+
+/* ── Keyboard ── */
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if(e.code === 'Escape') {
+    if(pointerLocked) document.exitPointerLock?.();
+    else window.location.href = 'index.html';
+  }
+  // Walking keys enable free walk mode
+  if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) {
+    if(!freeWalk) enableFreeWalk();
+    lastInteract = Date.now();
+  }
+  dismiss();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+function enableFreeWalk() {
+  freeWalk = true;
+  document.getElementById('mode-badge').classList.add('show');
+  // Clear VP buttons
+  document.querySelectorAll('.vpb').forEach(b => b.classList.remove('on'));
+}
+
+/* ── Touch joystick ── */
+const joyEl    = document.getElementById('joy-move');
+const joyKnob  = document.getElementById('joy-move-knob');
+let joyId = null, joyBase = {x:0,y:0};
+const joyInput = {x:0, y:0};
+
+joyEl.addEventListener('touchstart', e => {
+  const t = e.changedTouches[0];
+  joyId = t.identifier;
+  const r = joyEl.getBoundingClientRect();
+  joyBase = {x: r.left + r.width/2, y: r.top + r.height/2};
+  if(!freeWalk) enableFreeWalk();
+  e.preventDefault();
+}, {passive:false});
+
+joyEl.addEventListener('touchmove', e => {
+  for(const t of e.changedTouches) {
+    if(t.identifier !== joyId) continue;
+    const dx = t.clientX - joyBase.x;
+    const dy = t.clientY - joyBase.y;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const maxR = 28;
+    const clamped = Math.min(dist, maxR);
+    const nx = dist>0 ? dx/dist : 0;
+    const ny = dist>0 ? dy/dist : 0;
+    joyInput.x = nx * Math.min(1, dist/maxR);
+    joyInput.y = ny * Math.min(1, dist/maxR);
+    joyKnob.style.transform = `translate(calc(-50% + ${nx*clamped}px), calc(-50% + ${ny*clamped}px))`;
+  }
+  e.preventDefault();
+}, {passive:false});
+
+joyEl.addEventListener('touchend', e => {
+  for(const t of e.changedTouches) {
+    if(t.identifier === joyId) {
+      joyId = null;
+      joyInput.x = 0; joyInput.y = 0;
+      joyKnob.style.transform = 'translate(-50%,-50%)';
+    }
+  }
+}, {passive:false});
+
+/* ── Viewpoints ── */
 const VIEWPOINTS = [
-  { pos:[0,   1.65,  0],   lookAt:[0,  1.65, -80],  label:'Centre Field' },   // 0
-  { pos:[0,   3.5,  165],  lookAt:[0,  3.5, 110],   label:'Clubhouse End' },   // 1
-  { pos:[-76, 1.65, -40],  lookAt:[0,  1.65, -40],  label:'Pony Line' },       // 2
-  { pos:[0,   1.65,-155],  lookAt:[0,  2.5, -80],   label:'Lake End' },        // 3
-  { pos:[-94, 2.5,   0],   lookAt:[-30,2.5,   0],   label:'Villa West' },      // 4
-  { pos:[-150,1.65, 118],  lookAt:[-130,1.65,138],  label:'Stables Yard' },    // 5
+  { pos:[0,   EYE_HEIGHT,  0],   yaw:Math.PI,   pitch:0,    label:'Centre Field' },
+  { pos:[0,   3.5,       165],   yaw:Math.PI,   pitch:-0.1, label:'Clubhouse End' },
+  { pos:[-76, EYE_HEIGHT,-40],   yaw:Math.PI/2, pitch:0,    label:'Pony Line' },
+  { pos:[0,   EYE_HEIGHT,-155],  yaw:0,         pitch:0.05, label:'Lake End' },
+  { pos:[-94, 2.5,         0],   yaw:Math.PI/2, pitch:0,    label:'Villa West' },
+  { pos:[-150,EYE_HEIGHT, 118],  yaw:Math.PI/4, pitch:0,    label:'Stables Yard' },
 ];
 
 let curVP = 0;
-let targetPos = new THREE.Vector3(0, 1.65, 0);
-let targetLook = new THREE.Vector3(0, 1.65, -80);
-let camPos = new THREE.Vector3(0, 1.65, 0);
 
-// Mouse look state
-let isPointerDown = false;
-let lastX = 0, lastY = 0;
-let yaw = Math.PI, pitch = 0;
-const MAX_PITCH = Math.PI / 3;
-
-// Derive initial yaw/pitch from first viewpoint
 function setVP(idx) {
   curVP = idx;
+  freeWalk = false;
+  velocity.set(0,0,0);
+  document.getElementById('mode-badge').classList.remove('show');
   const vp = VIEWPOINTS[idx];
   targetPos.set(...vp.pos);
-  targetLook.set(...vp.lookAt);
-  // Update buttons
+  yaw   = vp.yaw;
+  pitch = vp.pitch;
   document.querySelectorAll('.vpb').forEach((b,i) => b.classList.toggle('on', i===idx));
-  // Show context
   const infos = [
     { lbl:'Main Field',  name:'International Polo Field',   desc:'FIP-standard · 275m × 145m · Red laterite pony track · 30, 40 and 60-yard markings' },
     { lbl:'Hospitality', name:'Clubhouse & Pavilion',       desc:'3-floor luxury clubhouse · 3,419 sqm · Tiered spectator stands overlooking the field' },
@@ -1130,62 +1354,6 @@ function setVP(idx) {
 function goVP(idx) { setVP(idx); }
 window.goVP = goVP;
 
-// Pointer events — mouse look
-const cvs = document.getElementById('c');
-cvs.addEventListener('mousedown', e => { isPointerDown=true; lastX=e.clientX; lastY=e.clientY; dismiss(); });
-window.addEventListener('mouseup', () => isPointerDown=false);
-window.addEventListener('mousemove', e => {
-  if(!isPointerDown) return;
-  const dx = e.clientX - lastX;
-  const dy = e.clientY - lastY;
-  yaw   -= dx * 0.003;
-  pitch -= dy * 0.003;
-  pitch  = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
-  lastX = e.clientX; lastY = e.clientY;
-});
-
-// Touch
-cvs.addEventListener('touchstart', e => { isPointerDown=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; dismiss(); }, {passive:true});
-cvs.addEventListener('touchend',   () => isPointerDown=false);
-cvs.addEventListener('touchmove',  e => {
-  if(!isPointerDown) return;
-  const dx = e.touches[0].clientX - lastX;
-  const dy = e.touches[0].clientY - lastY;
-  yaw -= dx * 0.004;
-  pitch -= dy * 0.004;
-  pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
-  lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-}, {passive:true});
-
-// Gyroscope for mobile
-if(window.DeviceOrientationEvent) {
-  let gyroCal = null;
-  window.addEventListener('deviceorientation', e => {
-    if(!gyroCal && e.gamma!=null) gyroCal={b:e.beta,g:e.gamma};
-    if(gyroCal && e.gamma!=null) {
-      yaw = -(e.gamma - gyroCal.g) * 0.018 + Math.PI;
-      pitch = -(e.beta - gyroCal.b) * 0.014;
-      pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
-    }
-  });
-}
-
-// Keyboard
-document.addEventListener('keydown', e => {
-  if(e.key==='ArrowRight') goVP((curVP+1)%VIEWPOINTS.length);
-  if(e.key==='ArrowLeft')  goVP((curVP-1+VIEWPOINTS.length)%VIEWPOINTS.length);
-  if(e.key==='Escape')     window.location.href = 'index.html';
-  dismiss();
-});
-
-// Set initial yaw from first viewpoint
-{
-  const vp = VIEWPOINTS[0];
-  const dir = new THREE.Vector3(...vp.lookAt).sub(new THREE.Vector3(...vp.pos));
-  yaw = Math.atan2(dir.x, dir.z);
-  pitch = 0;
-}
-
 let hinted = false;
 function dismiss() {
   if(hinted) return; hinted=true;
@@ -1193,45 +1361,207 @@ function dismiss() {
 }
 
 /* ═══════════════════════════════════════════════
-   RENDER LOOP
+   RADAR MINIMAP
+   ─────────────────────────────────────────────
+   Draws plan-2d.png scaled into the radar canvas,
+   then overlays a gold directional arrow for the
+   camera's current world position and yaw.
+
+   World → radar mapping:
+     World X: [-200, 200] → Radar X: [4, 156]
+     World Z: [-270, 220] → Radar Y: [4, 100]
 ═══════════════════════════════════════════════ */
-const clock = new THREE.Clock();
-// Camera look direction computed from yaw/pitch
-const lookDir = new THREE.Vector3();
-const camRight = new THREE.Vector3();
+const radarCanvas = document.getElementById('radar-canvas');
+const rctx = radarCanvas.getContext('2d');
+const RC_W = 320, RC_H = 208;  // radar canvas resolution (2× for sharpness)
 
-let transitioning = false;
-let transT = 1;
-let transStart = new THREE.Vector3();
-let transEnd = new THREE.Vector3();
+// World space bounds that fit the plan image
+const WORLD_X_MIN = -200, WORLD_X_MAX = 200;
+const WORLD_Z_MIN = -270, WORLD_Z_MAX = 220;
 
-function updateVPTransition() {
-  // Smoothly move camera to target position
-  camPos.lerp(targetPos, 0.055);
+// Load the plan image for the radar
+const radarImg = new Image();
+radarImg.src = 'assets/plan-2d.png';
+let radarImgLoaded = false;
+radarImg.onload = () => { radarImgLoaded = true; };
+
+function worldToRadar(wx, wz) {
+  const rx = ((wx - WORLD_X_MIN) / (WORLD_X_MAX - WORLD_X_MIN)) * RC_W;
+  const ry = ((wz - WORLD_Z_MIN) / (WORLD_Z_MAX - WORLD_Z_MIN)) * RC_H;
+  return { x: rx, y: ry };
+}
+
+function drawRadar() {
+  rctx.clearRect(0, 0, RC_W, RC_H);
+
+  // Draw plan image (desaturated + darkened for subtlety)
+  if(radarImgLoaded) {
+    rctx.save();
+    rctx.globalAlpha = 0.65;
+    rctx.filter = 'saturate(0.4) brightness(0.6)';
+    rctx.drawImage(radarImg, 0, 0, RC_W, RC_H);
+    rctx.restore();
+  } else {
+    // Fallback: dark green rectangle
+    rctx.fillStyle = 'rgba(20,45,20,0.8)';
+    rctx.fillRect(0, 0, RC_W, RC_H);
+  }
+
+  // Subtle grid lines
+  rctx.strokeStyle = 'rgba(201,168,76,0.08)';
+  rctx.lineWidth = 0.5;
+  for(let x=0; x<RC_W; x+=RC_W/6) {
+    rctx.beginPath(); rctx.moveTo(x,0); rctx.lineTo(x,RC_H); rctx.stroke();
+  }
+  for(let y=0; y<RC_H; y+=RC_H/4) {
+    rctx.beginPath(); rctx.moveTo(0,y); rctx.lineTo(RC_W,y); rctx.stroke();
+  }
+
+  // Camera position in radar space
+  const rp = worldToRadar(camPos.x, camPos.z);
+
+  // View cone — subtle gold wedge showing look direction
+  const coneAngle = Math.PI / 5;  // 36° half-angle
+  const coneLen   = 28;
+  // yaw=0 is +Z in world; in radar +Z is downward, +X is rightward
+  // radar yaw: 0 = down, π/2 = right → radar angle = yaw - π/2... 
+  // world yaw=Math.PI means facing -Z (north on the plan which is up in world, down in radar)
+  const radarAngle = yaw - Math.PI/2; // rotate by 90° for canvas space
+
+  const x1 = rp.x + Math.cos(radarAngle - coneAngle) * coneLen;
+  const y1 = rp.y + Math.sin(radarAngle - coneAngle) * coneLen;
+  const x2 = rp.x + Math.cos(radarAngle + coneAngle) * coneLen;
+  const y2 = rp.y + Math.sin(radarAngle + coneAngle) * coneLen;
+
+  rctx.save();
+  rctx.beginPath();
+  rctx.moveTo(rp.x, rp.y);
+  rctx.lineTo(x1, y1);
+  rctx.lineTo(x2, y2);
+  rctx.closePath();
+  rctx.fillStyle = 'rgba(201,168,76,0.18)';
+  rctx.fill();
+  rctx.strokeStyle = 'rgba(201,168,76,0.4)';
+  rctx.lineWidth = 0.8;
+  rctx.stroke();
+  rctx.restore();
+
+  // Direction arrow — thin gold line from dot
+  const arrowLen = 18;
+  const ax = rp.x + Math.cos(radarAngle) * arrowLen;
+  const ay = rp.y + Math.sin(radarAngle) * arrowLen;
+
+  rctx.save();
+  rctx.strokeStyle = '#C9A84C';
+  rctx.lineWidth = 1.5;
+  rctx.lineCap = 'round';
+  rctx.beginPath();
+  rctx.moveTo(rp.x, rp.y);
+  rctx.lineTo(ax, ay);
+  rctx.stroke();
+
+  // Arrowhead
+  const headLen = 5, headAngle = 0.45;
+  rctx.beginPath();
+  rctx.moveTo(ax, ay);
+  rctx.lineTo(ax - headLen*Math.cos(radarAngle - headAngle), ay - headLen*Math.sin(radarAngle - headAngle));
+  rctx.moveTo(ax, ay);
+  rctx.lineTo(ax - headLen*Math.cos(radarAngle + headAngle), ay - headLen*Math.sin(radarAngle + headAngle));
+  rctx.stroke();
+  rctx.restore();
+
+  // Position dot — gold filled circle
+  rctx.save();
+  // Outer ring (subtle halo)
+  rctx.beginPath();
+  rctx.arc(rp.x, rp.y, 5.5, 0, Math.PI*2);
+  rctx.fillStyle = 'rgba(201,168,76,0.2)';
+  rctx.fill();
+  // Inner dot
+  rctx.beginPath();
+  rctx.arc(rp.x, rp.y, 3, 0, Math.PI*2);
+  rctx.fillStyle = '#C9A84C';
+  rctx.fill();
+  rctx.restore();
+
+  // Coordinates readout
+  document.getElementById('radar-coords').textContent =
+    `${Math.round(camPos.x)}m E  ·  ${Math.round(-camPos.z)}m N`;
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER LOOP — free walk + radar
+═══════════════════════════════════════════════ */
+const lookDir  = new THREE.Vector3();
+const moveDir  = new THREE.Vector3();
+const rightDir = new THREE.Vector3();
+const UP       = new THREE.Vector3(0, 1, 0);
+const clock    = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05); // cap at 50ms
+
+  /* ── Free walk movement ── */
+  if(freeWalk) {
+    // Forward direction (horizontal only — no flying)
+    lookDir.set(Math.sin(yaw), 0, Math.cos(yaw)).normalize();
+    rightDir.crossVectors(lookDir, UP).normalize();
+
+    // Gather input
+    const sprint = keys['ShiftLeft'] || keys['ShiftRight'];
+    const speed = sprint ? SPRINT_SPEED : WALK_SPEED;
+    const accel = new THREE.Vector3();
+
+    // Keyboard
+    if(keys['KeyW'] || keys['ArrowUp'])   accel.addScaledVector(lookDir, -speed);
+    if(keys['KeyS'] || keys['ArrowDown']) accel.addScaledVector(lookDir,  speed);
+    if(keys['KeyA'])                      accel.addScaledVector(rightDir, -speed);
+    if(keys['KeyD'])                      accel.addScaledVector(rightDir,  speed);
+
+    // Touch joystick
+    if(joyInput.x !== 0 || joyInput.y !== 0) {
+      accel.addScaledVector(rightDir, joyInput.x * speed);
+      accel.addScaledVector(lookDir,  joyInput.y * speed);  // y=+1 is forward in joystick
+    }
+
+    // Apply to velocity with damping
+    velocity.addScaledVector(accel, dt);
+    velocity.multiplyScalar(DAMPING);
+
+    // Proposed new position
+    const newX = THREE.MathUtils.clamp(camPos.x + velocity.x * dt, BOUNDS.xMin, BOUNDS.xMax);
+    const newZ = THREE.MathUtils.clamp(camPos.z + velocity.z * dt, BOUNDS.zMin, BOUNDS.zMax);
+    camPos.set(newX, EYE_HEIGHT, newZ);
+    targetPos.copy(camPos);
+
+  } else {
+    // VP mode — smooth lerp to target
+    camPos.lerp(targetPos, 0.055);
+  }
+
+  // Apply camera position
   camera.position.copy(camPos);
 
-  // Compute look target from yaw/pitch (free look)
+  // Camera orientation from yaw/pitch
   lookDir.set(
     Math.sin(yaw) * Math.cos(pitch),
     Math.sin(pitch),
     Math.cos(yaw) * Math.cos(pitch)
   );
-  camera.lookAt(camera.position.clone().add(lookDir));
+  camera.lookAt(camPos.clone().add(lookDir));
 
-  // When VP changes, smoothly orient yaw toward the preset look
-  if(!isPointerDown) {
-    const vp = VIEWPOINTS[curVP];
-    const tgt = new THREE.Vector3(...vp.lookAt).sub(new THREE.Vector3(...vp.pos));
-    const tYaw = Math.atan2(tgt.x, tgt.z);
-    // Only nudge if no manual input recently
-    // (handled by not lerping yaw — free look is intentional)
-  }
+  // Update radar every frame
+  drawRadar();
+
+  renderer.render(scene, camera);
 }
 
-function animate() {
-  requestAnimationFrame(animate);
-  updateVPTransition();
-  renderer.render(scene, camera);
+/* ── Initial yaw ── */
+{
+  const vp = VIEWPOINTS[0];
+  yaw   = vp.yaw;
+  pitch = vp.pitch;
 }
 
 /* ═══════════════════════════════════════════════
@@ -1257,7 +1587,7 @@ function build() {
         document.getElementById('loader').classList.add('out');
         document.getElementById('nav').classList.add('show');
         document.getElementById('vp').classList.add('show');
-        document.getElementById('qbadge').classList.add('show');
+        document.getElementById('radar').classList.add('show');
         setTimeout(() => document.getElementById('loader').remove(), 1000);
         setVP(0);
         animate();
