@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Project XIX — Polo Field Experience</title>
+<script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green: #1C3A2A;
+    --gold: #C9A84C;
+    --cream: #F5F0E8;
+  }
+
+  body { background: #0a1a0f; overflow: hidden; font-family: 'Inter', sans-serif; }
+
+  /* ── Loading screen ── */
+  #loader {
+    position: fixed; inset: 0; z-index: 200;
+    background: #0a1a0f;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity .8s ease;
+  }
+  #loader.fade { opacity: 0; pointer-events: none; }
+  .loader-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px; font-weight: 300;
+    color: var(--cream); letter-spacing: .08em;
+    margin-bottom: 6px;
+  }
+  .loader-title span { color: var(--gold); }
+  .loader-sub {
+    font-size: 10px; font-weight: 400;
+    letter-spacing: .24em; text-transform: uppercase;
+    color: rgba(245,240,232,.35);
+    margin-bottom: 48px;
+  }
+  .loader-bar {
+    width: 160px; height: 1px;
+    background: rgba(255,255,255,.1);
+    position: relative; overflow: hidden;
+  }
+  .loader-bar::after {
+    content: '';
+    position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: var(--gold);
+    animation: load 1.8s ease forwards;
+  }
+  @keyframes load { to { left: 0; } }
+
+  /* ── Top nav ── */
+  #top-nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex; align-items: center;
+    padding: 0 20px; height: 56px;
+    background: rgba(10,26,15,.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(201,168,76,.15);
+    opacity: 0; transition: opacity .6s ease .3s;
+  }
+  #top-nav.show { opacity: 1; }
+  .nav-back {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11px; font-weight: 400;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: rgba(245,240,232,.6);
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 5px; padding: 6px 12px;
+    cursor: pointer; transition: all .2s;
+    text-decoration: none;
+  }
+  .nav-back:hover { background: rgba(255,255,255,.12); color: var(--cream); }
+  .nav-back svg { width: 13px; height: 13px; stroke: currentColor; }
+  .nav-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px; font-weight: 300;
+    color: var(--cream); letter-spacing: .05em;
+    margin: 0 auto;
+  }
+  .nav-badge {
+    font-size: 9px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid rgba(201,168,76,.3);
+    border-radius: 3px; padding: 3px 8px;
+  }
+
+  /* ── Viewpoint selector ── */
+  #vp-strip {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(10,26,15,.9);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(201,168,76,.15);
+    padding: 12px 20px 18px;
+    opacity: 0; transition: opacity .6s ease .5s;
+  }
+  #vp-strip.show { opacity: 1; }
+  .vp-label {
+    font-size: 9px; font-weight: 500;
+    letter-spacing: .2em; text-transform: uppercase;
+    color: rgba(245,240,232,.28);
+    margin-bottom: 9px;
+  }
+  .vp-row {
+    display: flex; gap: 8px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .vp-row::-webkit-scrollbar { display: none; }
+  .vp-btn {
+    flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 7px; cursor: pointer;
+    transition: all .2s; min-width: 80px;
+    color: rgba(245,240,232,.5);
+  }
+  .vp-btn:hover { background: rgba(255,255,255,.1); border-color: rgba(201,168,76,.4); }
+  .vp-btn.active { background: rgba(201,168,76,.12); border-color: #C9A84C; color: #C9A84C; }
+  .vp-icon { font-size: 18px; line-height: 1; }
+  .vp-name {
+    font-size: 10px; font-weight: 500;
+    letter-spacing: .05em; text-transform: uppercase;
+    text-align: center; line-height: 1.3;
+  }
+  .vp-btn.active .vp-name { color: #C9A84C; }
+
+  /* ── Interaction hint ── */
+  #hint {
+    position: fixed; top: 72px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(10,26,15,.82);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(201,168,76,.18);
+    border-radius: 40px;
+    padding: 8px 16px;
+    font-size: 11px; color: rgba(245,240,232,.55);
+    white-space: nowrap; pointer-events: none;
+    transition: opacity .5s ease;
+  }
+  #hint.hidden { opacity: 0; }
+  #hint svg { stroke: var(--gold); width: 14px; height: 14px; }
+
+  /* ── Zone info overlay ── */
+  #zone-info {
+    position: fixed; top: 70px; right: 16px;
+    z-index: 100;
+    background: rgba(10,26,15,.88);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(201,168,76,.2);
+    border-radius: 10px;
+    padding: 14px 16px;
+    max-width: 200px;
+    opacity: 0; transition: opacity .4s ease;
+    pointer-events: none;
+  }
+  #zone-info.show { opacity: 1; }
+  .zi-label {
+    font-size: 9px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase;
+    color: rgba(201,168,76,.7); margin-bottom: 4px;
+  }
+  .zi-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px; font-weight: 400;
+    color: var(--cream); margin-bottom: 6px;
+  }
+  .zi-desc { font-size: 11px; color: rgba(245,240,232,.45); line-height: 1.55; }
+
+  /* ── A-Frame canvas override ── */
+  a-scene canvas { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loader">
+  <div class="loader-title">PROJECT <span>XIX</span></div>
+  <div class="loader-sub">Polo Field · Ground Level</div>
+  <div class="loader-bar"></div>
+</div>
+
+<!-- Top nav -->
+<nav id="top-nav">
+  <a class="nav-back" href="index.html">
+    <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5" stroke-linecap="round"><path d="M10 12L6 8l4-4"/></svg>
+    Masterplan
+  </a>
+  <div class="nav-title">Polo Field</div>
+  <div class="nav-badge">3D · LIVE</div>
+</nav>
+
+<!-- Hint -->
+<div id="hint">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round">
+    <path d="M5 9l-3 3 3 3M19 9l3 3-3 3M9 5l3-3 3 3M9 19l3 3 3-3"/>
+  </svg>
+  Drag or use arrow keys to look around
+</div>
+
+<!-- Zone info (shows on hover) -->
+<div id="zone-info">
+  <div class="zi-label" id="zi-label">Zone</div>
+  <div class="zi-name" id="zi-name"></div>
+  <div class="zi-desc" id="zi-desc"></div>
+</div>
+
+<!-- Viewpoint strip -->
+<div id="vp-strip">
+  <div class="vp-label">Standing points</div>
+  <div class="vp-row">
+    <button class="vp-btn active" onclick="goTo('centre')" id="vp-centre">
+      <div class="vp-icon">⚽</div>
+      <div class="vp-name">Centre<br>Field</div>
+    </button>
+    <button class="vp-btn" onclick="goTo('south')" id="vp-south">
+      <div class="vp-icon">🏛</div>
+      <div class="vp-name">Club<br>House</div>
+    </button>
+    <button class="vp-btn" onclick="goTo('north')" id="vp-north">
+      <div class="vp-icon">🌊</div>
+      <div class="vp-name">Lake<br>End</div>
+    </button>
+    <button class="vp-btn" onclick="goTo('west')" id="vp-west">
+      <div class="vp-icon">🏠</div>
+      <div class="vp-name">Villa<br>West</div>
+    </button>
+    <button class="vp-btn" onclick="goTo('east')" id="vp-east">
+      <div class="vp-icon">🏢</div>
+      <div class="vp-name">Villa<br>East</div>
+    </button>
+    <button class="vp-btn" onclick="goTo('ponyline')" id="vp-ponyline">
+      <div class="vp-icon">🐎</div>
+      <div class="vp-name">Pony<br>Line</div>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     A-FRAME SCENE
+     All dimensions derived from the masterplan.
+     Polo field: 275m long × 145m wide (international std)
+     Pony track surround: ~18m wide
+     Villas: ~8m wide × 7m tall, spaced 4m apart
+     Apartment blocks: 30m wide × 18m tall
+     Clubhouse: 80m wide × 8m tall
+     Lagos sky: equatorial blue, warm horizon haze
+════════════════════════════════════════════════════ -->
+<a-scene
+  id="scene"
+  fog="type: linear; color: #b8d4a8; near: 180; far: 420"
+  renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true"
+  vr-mode-ui="enabled: false"
+  loading-screen="enabled: false"
+  background="color: #7ab8e8">
+
+  <!-- ── Assets ── -->
+  <a-assets>
+    <!-- Procedural textures generated in canvas -->
+  </a-assets>
+
+  <!-- ── Camera rig — positioned at centre field, standing height ── -->
+  <a-entity id="rig" position="0 1.65 0">
+    <a-camera
+      id="cam"
+      look-controls="pointerLockEnabled: false; magicWindowTrackingEnabled: true; touchEnabled: true"
+      wasd-controls="enabled: false"
+      fov="75"
+      near="0.1"
+      far="500">
+    </a-camera>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       SKY — Lagos equatorial gradient
+       Top: deep cerulean blue
+       Horizon: warm amber haze (harmattan quality)
+  ══════════════════════════════════════════════ -->
+  <a-sky color="#7ab8e8" radius="480"></a-sky>
+
+  <!-- Horizon haze band — warm amber fog at ground level -->
+  <a-entity position="0 -8 0">
+    <a-torus
+      radius="460" radius-tubular="48"
+      segments-radial="32" segments-tubular="6"
+      material="color:#c8a85a; opacity:0.18; transparent:true; side:back; shader:flat">
+    </a-torus>
+  </a-entity>
+
+  <!-- ── Ambient + Directional light (Lagos golden hour) ── -->
+  <a-light type="ambient" color="#ffe8b0" intensity="0.85"></a-light>
+  <a-light type="directional"
+    position="-1 2.5 -0.8"
+    color="#fff4d6"
+    intensity="1.4"
+    cast-shadow="true">
+  </a-light>
+  <!-- Fill light from opposite side -->
+  <a-light type="directional" position="1 1 1" color="#b8d4ff" intensity="0.3"></a-light>
+
+  <!-- ══════════════════════════════════════════════
+       GROUND LAYERS
+       1. Base earth (large plane, red-brown laterite)
+       2. Polo field green (central rectangle)
+       3. Pony track (laterite clay surround)
+       4. Yard line markings
+  ══════════════════════════════════════════════ -->
+
+  <!-- Base earth -->
+  <a-plane
+    position="0 0 0"
+    rotation="-90 0 0"
+    width="600" height="600"
+    material="color:#7a4a28; roughness:0.95; metalness:0">
+  </a-plane>
+
+  <!-- ── Polo field grass — 275m × 145m ── -->
+  <!-- The field is centred on origin. Camera starts at centre. -->
+  <a-plane
+    id="polo-grass"
+    position="0 0.02 0"
+    rotation="-90 0 0"
+    width="145" height="275"
+    material="color:#3d8b3d; roughness:0.9; metalness:0"
+    class="clickable" data-zone="polo-grass"
+    data-name="Polo Field" data-desc="International FIP-standard field · 275m × 145m · Laterite clay surround">
+  </a-plane>
+
+  <!-- Field darker green stripe texture (alternating mow lines) — simplified as 5 stripes -->
+  <a-entity position="0 0.03 0">
+    <!-- Alternating mow stripes: 5 darker bands across field width -->
+    <a-plane rotation="-90 0 0" width="145" height="55" position="0 0 -110" material="color:#358035; opacity:0.35; transparent:true; shader:flat"></a-plane>
+    <a-plane rotation="-90 0 0" width="145" height="55" position="0 0 0"   material="color:#358035; opacity:0.35; transparent:true; shader:flat"></a-plane>
+    <a-plane rotation="-90 0 0" width="145" height="55" position="0 0 110" material="color:#358035; opacity:0.35; transparent:true; shader:flat"></a-plane>
+  </a-entity>
+
+  <!-- ── Pony line / laterite track surround ── -->
+  <!-- North track -->
+  <a-plane position="0 0.01 -155.5" rotation="-90 0 0" width="185" height="21"
+    material="color:#8b4513; roughness:0.95; metalness:0"></a-plane>
+  <!-- South track -->
+  <a-plane position="0 0.01 155.5" rotation="-90 0 0" width="185" height="21"
+    material="color:#8b4513; roughness:0.95; metalness:0"></a-plane>
+  <!-- West track -->
+  <a-plane position="-83 0.01 0" rotation="-90 0 0" width="21" height="275"
+    material="color:#8b4513; roughness:0.95; metalness:0"></a-plane>
+  <!-- East track -->
+  <a-plane position="83 0.01 0" rotation="-90 0 0" width="21" height="275"
+    material="color:#8b4513; roughness:0.95; metalness:0"></a-plane>
+  <!-- Rounded corner NW -->
+  <a-cylinder position="-72.5 0.015 -144.5" radius="10.5" height="0.04" segments-radial="12"
+    material="color:#8b4513; roughness:0.95"></a-cylinder>
+  <!-- Rounded corner NE -->
+  <a-cylinder position="72.5 0.015 -144.5" radius="10.5" height="0.04" segments-radial="12"
+    material="color:#8b4513; roughness:0.95"></a-cylinder>
+  <!-- Rounded corner SW -->
+  <a-cylinder position="-72.5 0.015 144.5" radius="10.5" height="0.04" segments-radial="12"
+    material="color:#8b4513; roughness:0.95"></a-cylinder>
+  <!-- Rounded corner SE -->
+  <a-cylinder position="72.5 0.015 144.5" radius="10.5" height="0.04" segments-radial="12"
+    material="color:#8b4513; roughness:0.95"></a-cylinder>
+
+  <!-- ── Yard line markings ── -->
+  <!-- Centre line -->
+  <a-plane position="0 0.04 0" rotation="-90 0 0" width="145" height="0.4"
+    material="color:white; opacity:0.9; transparent:true; shader:flat"></a-plane>
+  <!-- 30-yard lines -->
+  <a-plane position="0 0.04 -82" rotation="-90 0 0" width="145" height="0.35"
+    material="color:white; opacity:0.7; transparent:true; shader:flat"></a-plane>
+  <a-plane position="0 0.04 82" rotation="-90 0 0" width="145" height="0.35"
+    material="color:white; opacity:0.7; transparent:true; shader:flat"></a-plane>
+  <!-- 40-yard lines -->
+  <a-plane position="0 0.04 -55" rotation="-90 0 0" width="145" height="0.3"
+    material="color:white; opacity:0.6; transparent:true; shader:flat"></a-plane>
+  <a-plane position="0 0.04 55" rotation="-90 0 0" width="145" height="0.3"
+    material="color:white; opacity:0.6; transparent:true; shader:flat"></a-plane>
+  <!-- 60-yard lines -->
+  <a-plane position="0 0.04 -27" rotation="-90 0 0" width="145" height="0.25"
+    material="color:white; opacity:0.5; transparent:true; shader:flat"></a-plane>
+  <a-plane position="0 0.04 27" rotation="-90 0 0" width="145" height="0.25"
+    material="color:white; opacity:0.5; transparent:true; shader:flat"></a-plane>
+  <!-- Side lines -->
+  <a-plane position="-72 0.04 0" rotation="-90 0 90" width="275" height="0.3"
+    material="color:white; opacity:0.7; transparent:true; shader:flat"></a-plane>
+  <a-plane position="72 0.04 0" rotation="-90 0 90" width="275" height="0.3"
+    material="color:white; opacity:0.7; transparent:true; shader:flat"></a-plane>
+
+  <!-- ── Goal posts ── (North end & South end) -->
+  <!-- North posts -->
+  <a-entity position="0 0 -137.5">
+    <a-cylinder position="-3.66 2.4 0" radius="0.12" height="4.8" material="color:white; metalness:0.3"></a-cylinder>
+    <a-cylinder position="3.66 2.4 0"  radius="0.12" height="4.8" material="color:white; metalness:0.3"></a-cylinder>
+    <a-cylinder position="0 4.85 0" radius="0.09" height="7.5" rotation="0 0 90" material="color:white; metalness:0.3"></a-cylinder>
+  </a-entity>
+  <!-- South posts -->
+  <a-entity position="0 0 137.5">
+    <a-cylinder position="-3.66 2.4 0" radius="0.12" height="4.8" material="color:white; metalness:0.3"></a-cylinder>
+    <a-cylinder position="3.66 2.4 0"  radius="0.12" height="4.8" material="color:white; metalness:0.3"></a-cylinder>
+    <a-cylinder position="0 4.85 0" radius="0.09" height="7.5" rotation="0 0 90" material="color:white; metalness:0.3"></a-cylinder>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       PROPOSED LAKE — North of field
+       Blue arc feature, sits between field and crescent villas
+  ══════════════════════════════════════════════ -->
+  <a-cylinder
+    id="lake"
+    position="0 0.05 -195"
+    radius="45" height="0.1" segments-radial="32"
+    material="color:#4a8fc4; roughness:0.1; metalness:0.4; opacity:0.88; transparent:true"
+    class="clickable" data-zone="lake"
+    data-name="Proposed Lake" data-desc="Ornamental lake feature · Crescent-shaped · Natural boundary between field and northern villas">
+  </a-cylinder>
+  <!-- Lake shimmer plane -->
+  <a-plane position="0 0.06 -195" rotation="-90 0 0" width="80" height="50"
+    material="color:#6aaee0; opacity:0.3; transparent:true; shader:flat"></a-plane>
+
+  <!-- ══════════════════════════════════════════════
+       PREMIUM VILLAS — WEST ROW
+       ~14 villas, cream/terracotta, 2-storey
+       Positioned west of pony track
+  ══════════════════════════════════════════════ -->
+  <a-entity id="villas-west">
+    <!-- Generate 14 villas along the west side -->
+    <!-- Villa body: 8m wide × 8m deep × 7m tall, spaced 4m -->
+    <!-- Row starts at z=-91 (north end) stepping 12m south -->
+    <a-entity position="-103 0 0">
+      <!-- Villa 1 --><a-box position="0 3.5 -78" width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 -78" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <!-- Villa 2 --><a-box position="0 3.5 -66" width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 -66" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <!-- Villa 3 --><a-box position="0 3.5 -54" width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 -54" width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <!-- Villa 4 --><a-box position="0 3.5 -42" width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 -42" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <!-- Villa 5 --><a-box position="0 3.5 -30" width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 -30" width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <!-- Villa 6 --><a-box position="0 3.5 -18" width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 -18" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <!-- Villa 7 --><a-box position="0 3.5 -6"  width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 -6"  width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <!-- Villa 8 --><a-box position="0 3.5 6"   width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 6"   width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <!-- Villa 9 --><a-box position="0 3.5 18"  width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 18"  width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <!-- Villa 10 --><a-box position="0 3.5 30" width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 30" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <!-- Villa 11 --><a-box position="0 3.5 42" width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 42" width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <!-- Villa 12 --><a-box position="0 3.5 54" width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 54" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <!-- Villa 13 --><a-box position="0 3.5 66" width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 66" width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <!-- Villa 14 --><a-box position="0 3.5 78" width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-w" data-name="Premium Villa" data-desc="3-bedroom polo-view villa · 330 sqm · West flank"></a-box>
+      <a-box position="0 5.5 78" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+    </a-entity>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       PREMIUM VILLAS — EAST ROW (mirror of west)
+  ══════════════════════════════════════════════ -->
+  <a-entity id="villas-east">
+    <a-entity position="103 0 0">
+      <a-box position="0 3.5 -78" width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 -78" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <a-box position="0 3.5 -66" width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 -66" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <a-box position="0 3.5 -54" width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 -54" width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <a-box position="0 3.5 -42" width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 -42" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <a-box position="0 3.5 -30" width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 -30" width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <a-box position="0 3.5 -18" width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 -18" width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <a-box position="0 3.5 -6"  width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 -6"  width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <a-box position="0 3.5 6"   width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 6"   width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <a-box position="0 3.5 18"  width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 18"  width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <a-box position="0 3.5 30"  width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 30"  width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <a-box position="0 3.5 42"  width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 42"  width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <a-box position="0 3.5 54"  width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 54"  width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+      <a-box position="0 3.5 66"  width="8" height="7" depth="8" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 66"  width="8.4" height="3" depth="8.4" material="color:#c1752b; roughness:0.9"></a-box>
+      <a-box position="0 3.5 78"  width="8" height="7" depth="8" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="villa-e" data-name="Premium Villa" data-desc="3-bedroom lake-view villa · 330 sqm · East flank"></a-box>
+      <a-box position="0 5.5 78"  width="8.4" height="3" depth="8.4" material="color:#b5651d; roughness:0.9"></a-box>
+    </a-entity>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       CLUBHOUSE — South boundary
+       Long white pavilion, bleachers facing the field
+       80m wide × 12m deep × 8m tall
+  ══════════════════════════════════════════════ -->
+  <a-entity id="clubhouse" position="0 0 185"
+    class="clickable" data-zone="clubhouse"
+    data-name="Clubhouse & Pavilion"
+    data-desc="3-floor luxury clubhouse · 3,419 sqm · Restaurant, sports lounge, 8 skyboxes">
+
+    <!-- Main building body -->
+    <a-box position="0 4.5 0" width="80" height="9" depth="14"
+      material="color:#f0ede4; roughness:0.7; metalness:0.05"></a-box>
+    <!-- Roof overhang - deep eave characteristic -->
+    <a-box position="0 9.2 0" width="84" height="0.6" depth="18"
+      material="color:#e0ddd4; roughness:0.6"></a-box>
+    <!-- Glazing band - large windows facing field -->
+    <a-box position="0 4.5 -7.2" width="76" height="4" depth="0.3"
+      material="color:#7ab8d4; opacity:0.6; transparent:true; metalness:0.5; roughness:0.1"></a-box>
+    <!-- Bleacher steps -->
+    <a-box position="0 0.4 -9" width="80" height="0.8" depth="4"
+      material="color:#c8c4bc; roughness:0.8"></a-box>
+    <a-box position="0 1.0 -10.5" width="80" height="0.8" depth="3"
+      material="color:#c8c4bc; roughness:0.8"></a-box>
+    <a-box position="0 1.6 -11.8" width="80" height="0.8" depth="3"
+      material="color:#c8c4bc; roughness:0.8"></a-box>
+    <!-- Pillars -->
+    <a-cylinder position="-36 4 -7" radius="0.6" height="9" material="color:#e8e5dc; roughness:0.7"></a-cylinder>
+    <a-cylinder position="-18 4 -7" radius="0.6" height="9" material="color:#e8e5dc; roughness:0.7"></a-cylinder>
+    <a-cylinder position="0  4 -7"  radius="0.6" height="9" material="color:#e8e5dc; roughness:0.7"></a-cylinder>
+    <a-cylinder position="18 4 -7"  radius="0.6" height="9" material="color:#e8e5dc; roughness:0.7"></a-cylinder>
+    <a-cylinder position="36 4 -7"  radius="0.6" height="9" material="color:#e8e5dc; roughness:0.7"></a-cylinder>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       LOFT APARTMENT BLOCKS — East, behind villas
+       Two white 5-storey blocks (from 3d.png)
+  ══════════════════════════════════════════════ -->
+  <!-- Block 1 - closer to field -->
+  <a-box
+    id="apt-block-1"
+    position="135 9 30"
+    width="28" height="18" depth="16"
+    material="color:#e8e5e0; roughness:0.65; metalness:0.05"
+    class="clickable" data-zone="loft"
+    data-name="Loft Apartments" data-desc="2-bedroom loft terrace · 125 sqm · 96 units · Northern crescent">
+  </a-box>
+  <!-- Balcony rails suggestion -->
+  <a-box position="135 15 22" width="28" height="0.4" depth="0.3" material="color:#d0cdc8; roughness:0.5"></a-box>
+  <a-box position="135 11 22" width="28" height="0.4" depth="0.3" material="color:#d0cdc8; roughness:0.5"></a-box>
+  <a-box position="135 7"  z="22" width="28" height="0.4" depth="0.3" material="color:#d0cdc8; roughness:0.5"></a-box>
+
+  <!-- Block 2 - behind block 1 -->
+  <a-box
+    position="145 9 -20"
+    width="28" height="18" depth="16"
+    material="color:#eceae6; roughness:0.65; metalness:0.05"
+    class="clickable" data-zone="loft"
+    data-name="Loft Apartments" data-desc="2-bedroom loft terrace · 125 sqm · 96 units total">
+  </a-box>
+
+  <!-- ══════════════════════════════════════════════
+       CRESCENT VILLAS — North arc (behind lake)
+       Curved row of smaller villas
+  ══════════════════════════════════════════════ -->
+  <a-entity id="crescent-villas">
+    <!-- Simplified as 10 villas in an arc at z=-230 -->
+    <a-box position="-55 3 -230" width="7" height="6" depth="7" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="crescent" data-name="Crescent Villa" data-desc="Northern crescent residence · Lake views"></a-box>
+    <a-box position="-55 5 -230" width="7.3" height="2.5" depth="7.3" material="color:#c1752b; roughness:0.9"></a-box>
+    <a-box position="-40 3 -238" width="7" height="6" depth="7" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="crescent" data-name="Crescent Villa" data-desc="Northern crescent residence · Lake views"></a-box>
+    <a-box position="-40 5 -238" width="7.3" height="2.5" depth="7.3" material="color:#b5651d; roughness:0.9"></a-box>
+    <a-box position="-22 3 -243" width="7" height="6" depth="7" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="crescent" data-name="Crescent Villa" data-desc="Northern crescent residence · Lake views"></a-box>
+    <a-box position="-22 5 -243" width="7.3" height="2.5" depth="7.3" material="color:#c1752b; roughness:0.9"></a-box>
+    <a-box position="-5 3 -245"  width="7" height="6" depth="7" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="crescent" data-name="Crescent Villa" data-desc="Northern crescent residence · Lake views"></a-box>
+    <a-box position="-5 5 -245"  width="7.3" height="2.5" depth="7.3" material="color:#b5651d; roughness:0.9"></a-box>
+    <a-box position="14 3 -243"  width="7" height="6" depth="7" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="crescent" data-name="Crescent Villa" data-desc="Northern crescent residence · Lake views"></a-box>
+    <a-box position="14 5 -243"  width="7.3" height="2.5" depth="7.3" material="color:#c1752b; roughness:0.9"></a-box>
+    <a-box position="32 3 -238"  width="7" height="6" depth="7" material="color:#cdb870; roughness:0.8" class="clickable" data-zone="crescent" data-name="Crescent Villa" data-desc="Northern crescent residence · Lake views"></a-box>
+    <a-box position="32 5 -238"  width="7.3" height="2.5" depth="7.3" material="color:#b5651d; roughness:0.9"></a-box>
+    <a-box position="48 3 -230"  width="7" height="6" depth="7" material="color:#d4c07a; roughness:0.8" class="clickable" data-zone="crescent" data-name="Crescent Villa" data-desc="Northern crescent residence · Lake views"></a-box>
+    <a-box position="48 5 -230"  width="7.3" height="2.5" depth="7.3" material="color:#c1752b; roughness:0.9"></a-box>
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       TREE LINE — Perimeter
+       Dense tropical canopy surrounding entire estate
+       Iroko / neem character — tall, full, dark green
+  ══════════════════════════════════════════════ -->
+  <a-entity id="trees">
+
+    <!-- West tree line at x=-160, z from -200 to 200, every 14m -->
+    <!-- Using cone+cylinder for stylised tropical tree -->
+    <!-- JS will generate these at runtime for performance -->
+
+    <!-- South tree line -->
+    <a-entity id="trees-south"></a-entity>
+    <!-- North tree line -->
+    <a-entity id="trees-north"></a-entity>
+    <!-- West tree line -->
+    <a-entity id="trees-west"></a-entity>
+    <!-- East tree line -->
+    <a-entity id="trees-east"></a-entity>
+
+  </a-entity>
+
+  <!-- ══════════════════════════════════════════════
+       TRAINING FIELD — West of main site
+       Visible in the distance, same green
+  ══════════════════════════════════════════════ -->
+  <a-plane
+    position="-190 0.01 -50"
+    rotation="-90 0 0"
+    width="100" height="160"
+    material="color:#358035; roughness:0.9"
+    class="clickable" data-zone="training"
+    data-name="Training Field"
+    data-desc="Polo academy practice ground · 5,000 sqm · 30/40/60 yard zones">
+  </a-plane>
+  <!-- Training field surround -->
+  <a-plane position="-190 0.005 -50" rotation="-90 0 0" width="120" height="180"
+    material="color:#8b4513; roughness:0.95"></a-plane>
+
+  <!-- ══════════════════════════════════════════════
+       STABLES — South-west
+       Red brick, low buildings
+  ══════════════════════════════════════════════ -->
+  <a-entity position="-170 0 140"
+    class="clickable" data-zone="stables"
+    data-name="Horse Stables"
+    data-desc="4 blocks · 56 stalls · Purpose-built equestrian facilities">
+    <a-box position="0 2 0" width="30" height="4" depth="12" material="color:#8b3a1a; roughness:0.9"></a-box>
+    <a-box position="0 4.2 0" width="32" height="0.5" depth="14" material="color:#7a3010; roughness:0.9"></a-box>
+    <a-box position="0 2 18" width="30" height="4" depth="12" material="color:#8b3a1a; roughness:0.9"></a-box>
+    <a-box position="0 4.2 18" width="32" height="0.5" depth="14" material="color:#7a3010; roughness:0.9"></a-box>
+  </a-entity>
+
+</a-scene>
+
+<script>
+/* ══════════════════════════════════════════════════
+   SCENE INIT & INTERACTION
+══════════════════════════════════════════════════ */
+
+// Viewpoint definitions
+// position: where the camera rig moves to
+// rotation: initial look direction (y-axis rotation in degrees)
+const VIEWPOINTS = {
+  centre:   { pos: {x:0,   y:1.65, z:0},    rot: {x:0, y:0,   z:0}, label: 'Centre Field' },
+  south:    { pos: {x:0,   y:3.5,  z:170},  rot: {x:-5, y:180, z:0}, label: 'Clubhouse End' },
+  north:    { pos: {x:0,   y:1.65, z:-160}, rot: {x:0, y:0,   z:0}, label: 'Lake End' },
+  west:     { pos: {x:-88, y:1.65, z:0},    rot: {x:0, y:90,  z:0}, label: 'West Villa Row' },
+  east:     { pos: {x:88,  y:1.65, z:0},    rot: {x:0, y:270, z:0}, label: 'East Villa Row' },
+  ponyline: { pos: {x:-72, y:1.65, z:-80},  rot: {x:5, y:120, z:0}, label: 'Pony Line' },
+};
+
+let currentVP = 'centre';
+let hintDismissed = false;
+
+// Zone info data
+const ZONE_INFO = {
+  'polo-grass': { label:'Main Field', name:'International Polo Field', desc:'FIP-standard · 275m × 145m · Red laterite clay surround with yard line markings at 30, 40 and 60 yards' },
+  'lake':       { label:'Feature',    name:'Proposed Lake',           desc:'Ornamental crescent lake · Natural boundary between polo field and northern crescent villas · Water feature and visual anchor' },
+  'villa-w':    { label:'Residential', name:'Premium Villa — West',   desc:'3-bedroom polo-view villa · 330 sqm · Undercroft parking · Private garden · Direct field sightlines' },
+  'villa-e':    { label:'Residential', name:'Premium Villa — East',   desc:'3-bedroom lake-view villa · 330 sqm · Views across proposed lake and surrounding landscape' },
+  'clubhouse':  { label:'Hospitality', name:'Clubhouse & Pavilion',   desc:'3-floor luxury clubhouse · 3,419 sqm · Sports lounge, restaurant & bar, 8 skyboxes, hotel check-in · Tiered spectator stands' },
+  'loft':       { label:'Residential', name:'Loft Apartments',        desc:'2-bedroom loft terrace · 125 sqm · 96 units total · Rooftop terraces with full estate views' },
+  'crescent':   { label:'Residential', name:'Crescent Villa',         desc:'Northern crescent residence · Lake and landscape views · Premium position above the ornamental lake' },
+  'training':   { label:'Equestrian',  name:'Training Field',         desc:'Polo academy practice ground · 5,000 sqm · 30/40/60 yard practice zones · Adjacent to stables' },
+  'stables':    { label:'Equestrian',  name:'Horse Stables',          desc:'4 stable blocks · 56 stalls total · 14 stalls per block · Tack rooms, vet access, quarantine paddocks' },
+};
+
+/* ─── Scene loaded ───────────────────────────── */
+document.querySelector('a-scene').addEventListener('loaded', () => {
+  generateTrees();
+  setupClickables();
+
+  // Dismiss loader
+  setTimeout(() => {
+    document.getElementById('loader').classList.add('fade');
+    document.getElementById('top-nav').classList.add('show');
+    document.getElementById('vp-strip').classList.add('show');
+    setTimeout(() => document.getElementById('loader').remove(), 900);
+  }, 800);
+
+  // Dismiss hint after 5 seconds or first interaction
+  setTimeout(() => dismissHint(), 7000);
+  document.querySelector('a-scene').addEventListener('click', dismissHint);
+});
+
+/* ─── Procedural tree generation ────────────── */
+function generateTrees() {
+  const treeColor = '#2d5a2d';
+  const trunkColor = '#5c3a1a';
+
+  function makeTree(parent, x, z) {
+    const h = 10 + Math.random() * 6;
+    const r = 3.5 + Math.random() * 2;
+    // Trunk
+    const trunk = document.createElement('a-cylinder');
+    trunk.setAttribute('position', `${x} ${h*0.25} ${z}`);
+    trunk.setAttribute('radius', '0.45');
+    trunk.setAttribute('height', h * 0.5);
+    trunk.setAttribute('material', `color:${trunkColor}; roughness:0.95`);
+    parent.appendChild(trunk);
+    // Canopy - 3 overlapping cones for fullness
+    [0, h*0.35, h*0.6].forEach((yOff, i) => {
+      const cone = document.createElement('a-cone');
+      cone.setAttribute('position', `${x} ${h*0.5 + yOff * 0.6} ${z}`);
+      cone.setAttribute('radius-bottom', r * (1 - i*0.22));
+      cone.setAttribute('radius-top', '0.2');
+      cone.setAttribute('height', h * 0.55);
+      cone.setAttribute('segments-radial', '7');
+      // Slight color variation
+      const g = 58 + Math.floor(Math.random() * 20);
+      cone.setAttribute('material', `color: rgb(30,${g},30); roughness:0.95`);
+      parent.appendChild(cone);
+    });
+  }
+
+  const scene = document.querySelector('a-scene');
+
+  // South tree line (z = +230 to +280)
+  const south = document.getElementById('trees-south');
+  for (let x = -200; x <= 200; x += 13) {
+    makeTree(south, x + (Math.random()-0.5)*4, 245 + (Math.random()-0.5)*8);
+  }
+  // North tree line (z = -250 to -300)
+  const north = document.getElementById('trees-north');
+  for (let x = -200; x <= 200; x += 12) {
+    makeTree(north, x + (Math.random()-0.5)*4, -265 + (Math.random()-0.5)*8);
+  }
+  // West tree line (x = -170 to -220)
+  const west = document.getElementById('trees-west');
+  for (let z = -250; z <= 240; z += 13) {
+    makeTree(west, -185 + (Math.random()-0.5)*8, z + (Math.random()-0.5)*4);
+  }
+  // East tree line (x = +170 to +220)
+  const east = document.getElementById('trees-east');
+  for (let z = -250; z <= 240; z += 13) {
+    makeTree(east, 185 + (Math.random()-0.5)*8, z + (Math.random()-0.5)*4);
+  }
+}
+
+/* ─── Clickable zone raycasting ─────────────── */
+function setupClickables() {
+  document.querySelectorAll('.clickable').forEach(el => {
+    el.addEventListener('click', function() {
+      const zone = this.getAttribute('data-zone');
+      const info = ZONE_INFO[zone];
+      if (!info) return;
+      const zi = document.getElementById('zone-info');
+      document.getElementById('zi-label').textContent = info.label;
+      document.getElementById('zi-name').textContent = info.name;
+      document.getElementById('zi-desc').textContent = info.desc;
+      zi.classList.add('show');
+      setTimeout(() => zi.classList.remove('show'), 4000);
+    });
+
+    // Hover highlight
+    el.addEventListener('mouseenter', function() {
+      this.setAttribute('material', 'emissive', '#C9A84C');
+      this.setAttribute('material', 'emissiveIntensity', '0.08');
+    });
+    el.addEventListener('mouseleave', function() {
+      this.setAttribute('material', 'emissive', '#000000');
+      this.setAttribute('material', 'emissiveIntensity', '0');
+    });
+  });
+}
+
+/* ─── Viewpoint navigation ───────────────────── */
+function goTo(vpId) {
+  const vp = VIEWPOINTS[vpId];
+  if (!vp) return;
+  currentVP = vpId;
+
+  // Update active button
+  document.querySelectorAll('.vp-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('vp-' + vpId)?.classList.add('active');
+
+  // Move camera rig
+  const rig = document.getElementById('rig');
+  // Animate position
+  rig.setAttribute('animation', {
+    property: 'position',
+    to: `${vp.pos.x} ${vp.pos.y} ${vp.pos.z}`,
+    dur: 900,
+    easing: 'easeInOutCubic',
+  });
+
+  // Rotate camera
+  const cam = document.getElementById('cam');
+  cam.setAttribute('rotation', `${vp.rot.x} ${vp.rot.y} ${vp.rot.z}`);
+
+  // Show zone info for this viewpoint
+  const labels = {
+    centre:   { name: 'Centre Field', desc: 'International FIP-standard polo field · Yard markings at 30, 40 and 60 yards · Two regulation goal posts' },
+    south:    { name: 'Clubhouse End', desc: 'Luxury 3-floor pavilion directly south · Tiered spectator stands face the field · 3,419 sqm of world-class hospitality' },
+    north:    { name: 'Lake End', desc: 'Proposed ornamental lake directly north · Crescent villas form the skyline beyond · The defining visual feature of the northern estate boundary' },
+    west:     { name: 'West Villa Row', desc: '14 premium polo-view villas standing directly beside the pony line · Every living room faces the field across 20 metres' },
+    east:     { name: 'East Villa Row', desc: '14 premium villas east flank · Loft apartment blocks visible behind · The proposed lake glimpsed north' },
+    ponyline: { name: 'Pony Line', desc: 'The red laterite clay surround where horses turn at the field boundary · 18m wide on all sides for player and horse safety' },
+  };
+  const info = labels[vpId];
+  if (info) {
+    const zi = document.getElementById('zone-info');
+    document.getElementById('zi-label').textContent = 'You are at';
+    document.getElementById('zi-name').textContent = info.name;
+    document.getElementById('zi-desc').textContent = info.desc;
+    zi.classList.add('show');
+    setTimeout(() => zi.classList.remove('show'), 5000);
+  }
+
+  dismissHint();
+}
+
+/* ─── Dismiss interaction hint ───────────────── */
+function dismissHint() {
+  if (hintDismissed) return;
+  hintDismissed = true;
+  document.getElementById('hint').classList.add('hidden');
+}
+
+/* ─── Keyboard shortcuts ─────────────────────── */
+document.addEventListener('keydown', e => {
+  const order = ['centre','south','north','west','east','ponyline'];
+  const i = order.indexOf(currentVP);
+  if (e.key === 'ArrowRight') goTo(order[(i+1) % order.length]);
+  if (e.key === 'ArrowLeft')  goTo(order[(i-1+order.length) % order.length]);
+  if (e.key === 'Escape') window.location.href = 'index.html';
+});
+</script>
+</body>
+</html>
