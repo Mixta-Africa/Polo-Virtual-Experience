@@ -4,929 +4,1207 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Project XIX — Polo Field</title>
-<script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--green:#1C3A2A;--gold:#C9A84C;--cream:#F5F0E8}
-body{background:#0a1505;overflow:hidden;font-family:'Inter',sans-serif}
+body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
+#c{display:block;width:100vw;height:100vh}
 
-#loader{position:fixed;inset:0;z-index:200;background:#0a1505;
+/* Loader */
+#loader{position:fixed;inset:0;z-index:200;background:#0a1008;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  transition:opacity .8s ease}
-#loader.fade{opacity:0;pointer-events:none}
-.l-title{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;
-  color:var(--cream);letter-spacing:.08em;margin-bottom:5px}
-.l-title span{color:var(--gold)}
-.l-sub{font-size:10px;letter-spacing:.26em;text-transform:uppercase;
-  color:rgba(245,240,232,.3);margin-bottom:50px}
-.l-bar{width:160px;height:1px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
-.l-bar::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
-  background:var(--gold);animation:lb 2s ease forwards}
-@keyframes lb{to{left:0}}
+  transition:opacity .9s ease}
+#loader.out{opacity:0;pointer-events:none}
+.lt{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;
+  color:var(--cream);letter-spacing:.1em;margin-bottom:5px}
+.lt span{color:var(--gold)}
+.ls{font-size:9px;letter-spacing:.28em;text-transform:uppercase;
+  color:rgba(245,240,232,.28);margin-bottom:52px}
+.lb{width:140px;height:1px;background:rgba(255,255,255,.07);overflow:hidden}
+.lp{height:100%;width:0%;background:var(--gold);transition:width .1s linear}
 
-#top-nav{position:fixed;top:0;left:0;right:0;z-index:100;
-  display:flex;align-items:center;padding:0 20px;height:54px;
-  background:rgba(8,20,10,.88);backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-  border-bottom:1px solid rgba(201,168,76,.13);
-  opacity:0;transition:opacity .5s ease .4s}
-#top-nav.show{opacity:1}
-.back{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:400;
-  letter-spacing:.1em;text-transform:uppercase;color:rgba(245,240,232,.55);
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
-  border-radius:5px;padding:6px 12px;cursor:pointer;text-decoration:none;transition:all .2s}
-.back:hover{color:var(--cream);background:rgba(255,255,255,.11)}
-.back svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round}
-.nav-c{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:300;
-  color:var(--cream);letter-spacing:.05em;position:absolute;left:50%;transform:translateX(-50%)}
-.nav-r{font-size:9px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--gold);border:1px solid rgba(201,168,76,.3);border-radius:3px;padding:3px 8px;margin-left:auto}
+/* Nav */
+#nav{position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;padding:0 20px;height:52px;
+  background:rgba(6,14,6,.88);backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(201,168,76,.12);
+  opacity:0;transition:opacity .5s ease}
+#nav.show{opacity:1}
+.nbk{display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:rgba(245,240,232,.5);
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  border-radius:5px;padding:5px 12px;cursor:pointer;text-decoration:none;transition:all .2s}
+.nbk:hover{color:var(--cream);background:rgba(255,255,255,.1)}
+.nbk svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round}
+.ntitle{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:300;
+  color:var(--cream);position:absolute;left:50%;transform:translateX(-50%)}
+.nbadge{font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--gold);border:1px solid rgba(201,168,76,.28);border-radius:3px;
+  padding:3px 8px;margin-left:auto}
 
-#hint{position:fixed;top:66px;left:50%;transform:translateX(-50%);z-index:100;
+/* Crosshair */
+#xhair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  pointer-events:none;z-index:50;opacity:.35}
+#xhair::before,#xhair::after{content:'';position:absolute;background:var(--gold)}
+#xhair::before{width:14px;height:1px;top:0;left:-7px}
+#xhair::after{width:1px;height:14px;top:-7px;left:0}
+
+/* Hint */
+#hint{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:100;
   display:flex;align-items:center;gap:8px;
-  background:rgba(8,20,10,.85);backdrop-filter:blur(10px);
-  border:1px solid rgba(201,168,76,.18);border-radius:40px;padding:8px 18px;
-  font-size:11px;color:rgba(245,240,232,.5);white-space:nowrap;pointer-events:none;
-  transition:opacity .5s ease}
+  background:rgba(6,14,6,.85);backdrop-filter:blur(10px);
+  border:1px solid rgba(201,168,76,.16);border-radius:40px;
+  padding:8px 18px;font-size:11px;color:rgba(245,240,232,.45);
+  white-space:nowrap;pointer-events:none;transition:opacity .6s}
 #hint.gone{opacity:0}
-#hint svg{stroke:var(--gold);fill:none;width:14px;height:14px;stroke-width:1.5;stroke-linecap:round}
 
-/* Zone info card */
-#zi{position:fixed;top:66px;right:16px;z-index:100;
-  background:rgba(8,20,10,.92);backdrop-filter:blur(14px);
-  border:1px solid rgba(201,168,76,.22);border-radius:10px;
-  padding:14px 16px;max-width:210px;
-  opacity:0;transition:opacity .35s ease;pointer-events:none}
-#zi.show{opacity:1}
-.zi-lbl{font-size:9px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;
-  color:rgba(201,168,76,.65);margin-bottom:4px}
-.zi-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400;
+/* Zone info */
+#zi{position:fixed;top:64px;right:16px;z-index:100;
+  background:rgba(6,14,6,.92);backdrop-filter:blur(14px);
+  border:1px solid rgba(201,168,76,.2);border-radius:10px;
+  padding:14px 16px;max-width:215px;
+  opacity:0;transition:opacity .35s;pointer-events:none}
+#zi.on{opacity:1}
+.zl{font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(201,168,76,.6);margin-bottom:4px}
+.zn{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;
   color:var(--cream);margin-bottom:5px;line-height:1.2}
-.zi-desc{font-size:11px;color:rgba(245,240,232,.4);line-height:1.55}
+.zd{font-size:11px;color:rgba(245,240,232,.38);line-height:1.55}
 
 /* Viewpoint strip */
 #vp{position:fixed;bottom:0;left:0;right:0;z-index:100;
-  background:rgba(8,20,10,.92);backdrop-filter:blur(16px);
-  border-top:1px solid rgba(201,168,76,.14);
-  padding:11px 18px 18px;
-  opacity:0;transition:opacity .5s ease .6s}
+  background:rgba(6,14,6,.92);backdrop-filter:blur(18px);
+  border-top:1px solid rgba(201,168,76,.13);
+  padding:11px 18px 20px;
+  opacity:0;transition:opacity .5s ease .5s}
 #vp.show{opacity:1}
-.vp-lbl{font-size:9px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;
-  color:rgba(245,240,232,.25);margin-bottom:9px}
-.vp-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
-.vp-row::-webkit-scrollbar{display:none}
-.vp-btn{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;
-  padding:8px 13px;
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
-  border-radius:7px;cursor:pointer;transition:all .2s;min-width:78px}
-.vp-btn:hover{background:rgba(255,255,255,.09);border-color:rgba(201,168,76,.35)}
-.vp-btn.on{background:rgba(201,168,76,.1);border-color:#C9A84C}
-.vp-ic{font-size:17px;line-height:1}
-.vp-nm{font-size:9px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;
-  text-align:center;line-height:1.3;color:rgba(245,240,232,.45)}
-.vp-btn.on .vp-nm{color:#C9A84C}
+.vplbl{font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+  color:rgba(245,240,232,.22);margin-bottom:9px}
+.vprow{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.vprow::-webkit-scrollbar{display:none}
+.vpb{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 14px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);border-radius:7px;
+  cursor:pointer;transition:all .2s;min-width:80px;color:rgba(245,240,232,.4)}
+.vpb:hover{background:rgba(255,255,255,.08);border-color:rgba(201,168,76,.3)}
+.vpb.on{background:rgba(201,168,76,.09);border-color:#C9A84C;color:#C9A84C}
+.vpic{font-size:16px;line-height:1}
+.vpnm{font-size:9px;letter-spacing:.05em;text-transform:uppercase;
+  text-align:center;line-height:1.35}
 
-a-scene canvas{display:block}
+/* Quality badge */
+#qbadge{position:fixed;bottom:88px;right:14px;z-index:100;
+  font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(201,168,76,.45);opacity:0;transition:opacity .5s ease 1s}
+#qbadge.show{opacity:1}
 </style>
 </head>
 <body>
 
+<canvas id="c"></canvas>
+
 <div id="loader">
-  <div class="l-title">PROJECT <span>XIX</span></div>
-  <div class="l-sub">Polo Field · Ground Level</div>
-  <div class="l-bar"></div>
+  <div class="lt">PROJECT <span>XIX</span></div>
+  <div class="ls">Polo Field · Ground Level</div>
+  <div class="lb"><div class="lp" id="lp"></div></div>
 </div>
 
-<nav id="top-nav">
-  <a class="back" href="index.html">
+<nav id="nav">
+  <a class="nbk" href="index.html">
     <svg viewBox="0 0 16 16"><path d="M10 12L6 8l4-4"/></svg>
     Masterplan
   </a>
-  <div class="nav-c">Polo Field</div>
-  <div class="nav-r">3D LIVE</div>
+  <div class="ntitle">Polo Field</div>
+  <div class="nbadge">3D · LIVE</div>
 </nav>
 
-<div id="hint">
-  <svg viewBox="0 0 24 24"><path d="M5 9l-3 3 3 3M19 9l3 3-3 3M9 5l3-3 3 3M9 19l3 3 3-3"/></svg>
-  Drag to look around · Click buildings to explore
-</div>
+<div id="xhair"></div>
+<div id="hint">Drag to look · Scroll to move · Click any zone</div>
 
 <div id="zi">
-  <div class="zi-lbl" id="zl">Zone</div>
-  <div class="zi-name" id="zn"></div>
-  <div class="zi-desc" id="zd"></div>
+  <div class="zl" id="zl">Zone</div>
+  <div class="zn" id="zn"></div>
+  <div class="zd" id="zd"></div>
 </div>
 
 <div id="vp">
-  <div class="vp-lbl">Standing points</div>
-  <div class="vp-row">
-    <button class="vp-btn on" onclick="go('centre')"   id="vb-centre">  <div class="vp-ic">⚽</div><div class="vp-nm">Centre<br>Field</div></button>
-    <button class="vp-btn"    onclick="go('clubhouse')" id="vb-clubhouse"><div class="vp-ic">🏛</div><div class="vp-nm">Club<br>House</div></button>
-    <button class="vp-btn"    onclick="go('lake')"     id="vb-lake">     <div class="vp-ic">🌊</div><div class="vp-nm">Lake<br>End</div></button>
-    <button class="vp-btn"    onclick="go('villa-w')"  id="vb-villa-w">  <div class="vp-ic">🏠</div><div class="vp-nm">Villa<br>West</div></button>
-    <button class="vp-btn"    onclick="go('villa-e')"  id="vb-villa-e">  <div class="vp-ic">🏠</div><div class="vp-nm">Villa<br>East</div></button>
-    <button class="vp-btn"    onclick="go('stables')"  id="vb-stables">  <div class="vp-ic">🐎</div><div class="vp-nm">Stables<br>Yard</div></button>
+  <div class="vplbl">Standing points</div>
+  <div class="vprow">
+    <button class="vpb on" id="vb0" onclick="goVP(0)"><div class="vpic">⚽</div><div class="vpnm">Centre<br>Field</div></button>
+    <button class="vpb"    id="vb1" onclick="goVP(1)"><div class="vpic">🏛</div><div class="vpnm">Club<br>House</div></button>
+    <button class="vpb"    id="vb2" onclick="goVP(2)"><div class="vpic">🚧</div><div class="vpnm">Pony<br>Line</div></button>
+    <button class="vpb"    id="vb3" onclick="goVP(3)"><div class="vpic">🌊</div><div class="vpnm">Lake<br>End</div></button>
+    <button class="vpb"    id="vb4" onclick="goVP(4)"><div class="vpic">🏠</div><div class="vpnm">Villa<br>West</div></button>
+    <button class="vpb"    id="vb5" onclick="goVP(5)"><div class="vpic">🐎</div><div class="vpnm">Stables<br>Yard</div></button>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════
-     A-FRAME SCENE
-     Scale: 1 unit = 1 metre
-     Origin (0,0,0) = centre of polo field
-     +Z = south (toward clubhouse / Lagos road)
-     -Z = north (toward lake / crescent villas)
-     +X = east   -X = west
-═════════════════════════════════════════════════ -->
-<a-scene id="sc"
-  fog="type:linear;color:#c8dfc0;near:200;far:450"
-  renderer="antialias:true;colorManagement:true;physicallyCorrectLights:true;shadowMapEnabled:true"
-  shadow="type:pcfsoft"
-  vr-mode-ui="enabled:false"
-  loading-screen="enabled:false"
-  background="color:#82c4f0">
+<div id="qbadge">Three.js PBR</div>
 
-  <a-assets timeout="10000"></a-assets>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
 
-  <!-- ── Camera rig ── -->
-  <a-entity id="rig" position="0 1.65 0">
-    <a-camera id="cam"
-      look-controls="pointerLockEnabled:false;magicWindowTrackingEnabled:true;touchEnabled:true"
-      wasd-controls="enabled:false"
-      fov="72" near="0.1" far="500">
-    </a-camera>
-  </a-entity>
+<script type="module">
+import * as THREE from 'three';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-  <!-- ══════════════════════════════════════
-       LIGHTING — Lagos golden afternoon
-  ══════════════════════════════════════ -->
-  <a-light type="ambient"     color="#fce8b0" intensity="0.7"></a-light>
-  <!-- Key sun — low angle from south-west, warm -->
-  <a-light type="directional" color="#ffe0a0" intensity="1.6"
-    position="-0.6 1 0.8" cast-shadow="true"
-    shadow-camera-left="-250" shadow-camera-right="250"
-    shadow-camera-top="250" shadow-camera-bottom="-250"
-    shadow-camera-near="1" shadow-camera-far="600"
-    shadow-map-width="2048" shadow-map-height="2048">
-  </a-light>
-  <!-- Sky fill — blue bounce from above -->
-  <a-light type="directional" color="#c0d8ff" intensity="0.35" position="0 1 0"></a-light>
-  <!-- Warm ground bounce -->
-  <a-light type="hemisphere"  color="#ffe8a0" ground-color="#8b5a2b" intensity="0.3"></a-light>
+/* ═══════════════════════════════════════════════
+   SCENE SETUP
+═══════════════════════════════════════════════ */
+const W = window.innerWidth, H = window.innerHeight;
 
-  <!-- ══════════════════════════════════════
-       SKY — Equatorial Lagos blue
-       Warm amber band at horizon (harmattan)
-  ══════════════════════════════════════ -->
-  <a-sky color="#82c4f0" radius="490"></a-sky>
-  <!-- Horizon warm haze ring -->
-  <a-torus position="0 -14 0" radius="470" radius-tubular="55"
-    segments-radial="28" segments-tubular="6"
-    material="color:#d4aa60;opacity:0.16;transparent:true;side:back;shader:flat">
-  </a-torus>
+const renderer = new THREE.WebGLRenderer({
+  canvas: document.getElementById('c'),
+  antialias: true,
+  powerPreference: 'high-performance',
+});
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-  <!-- ══════════════════════════════════════
-       GROUND PLANES
-  ══════════════════════════════════════ -->
-  <!-- Red laterite base earth — entire site -->
-  <a-plane position="0 0 0" rotation="-90 0 0" width="700" height="700"
-    material="color:#7a4228;roughness:0.96;metalness:0;receive-shadow:true"></a-plane>
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xc8e8b8, 220, 480);
 
-  <!-- Paved surrounds — dark grey roads/paths -->
-  <!-- South road (Lagos road) -->
-  <a-plane position="0 0.01 215" rotation="-90 0 0" width="500" height="18"
-    material="color:#3a3a3a;roughness:0.85"></a-plane>
+const camera = new THREE.PerspectiveCamera(68, W/H, 0.1, 600);
+camera.position.set(0, 1.65, 0);
 
-  <!-- ── POLO FIELD GREEN — 275m × 145m ── -->
-  <a-plane id="polo-field" position="0 0.02 0" rotation="-90 0 0"
-    width="145" height="275"
-    material="color:#2e7a2e;roughness:0.92;metalness:0;receive-shadow:true"
-    class="clickable"
-    data-lbl="Main Field" data-name="International Polo Field"
-    data-desc="FIP-standard · 275m × 145m · Red laterite pony track surround · 30, 40 and 60-yard markings">
-  </a-plane>
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+});
 
-  <!-- Mow stripe shading — alternating bands, subtle -->
-  <a-entity position="0 0.035 0">
-    <a-plane rotation="-90 0 0" width="145" height="46" position="0 0 -110.5"
-      material="color:#276827;opacity:0.4;transparent:true;shader:flat"></a-plane>
-    <a-plane rotation="-90 0 0" width="145" height="46" position="0 0 -55"
-      material="color:#2e7a2e;opacity:0.4;transparent:true;shader:flat"></a-plane>
-    <a-plane rotation="-90 0 0" width="145" height="47" position="0 0 0"
-      material="color:#276827;opacity:0.4;transparent:true;shader:flat"></a-plane>
-    <a-plane rotation="-90 0 0" width="145" height="46" position="0 0 55"
-      material="color:#2e7a2e;opacity:0.4;transparent:true;shader:flat"></a-plane>
-    <a-plane rotation="-90 0 0" width="145" height="46" position="0 0 110.5"
-      material="color:#276827;opacity:0.4;transparent:true;shader:flat"></a-plane>
-  </a-entity>
+/* ═══════════════════════════════════════════════
+   SKY — procedural Preetham sky
+   Lagos golden afternoon: sun low-ish south-west
+═══════════════════════════════════════════════ */
+const sky = new Sky();
+sky.scale.setScalar(490);
+scene.add(sky);
+const sun = new THREE.Vector3();
+const skyUni = sky.material.uniforms;
+skyUni['turbidity'].value = 5.5;       // slight harmattan haze
+skyUni['rayleigh'].value = 1.8;        // blue scattering
+skyUni['mieCoefficient'].value = 0.04;
+skyUni['mieDirectionalG'].value = 0.88;
+// Sun position: elevation 28°, azimuth 225° (south-west)
+const phi = THREE.MathUtils.degToRad(90 - 28);
+const theta = THREE.MathUtils.degToRad(225);
+sun.setFromSphericalCoords(1, phi, theta);
+skyUni['sunPosition'].value.copy(sun);
 
-  <!-- ── PONY TRACK — red laterite clay surround ── -->
-  <a-plane position="0 0.01 -155.5" rotation="-90 0 0" width="187" height="21"
-    material="color:#8b4513;roughness:0.95"></a-plane>
-  <a-plane position="0 0.01 155.5"  rotation="-90 0 0" width="187" height="21"
-    material="color:#8b4513;roughness:0.95"></a-plane>
-  <a-plane position="-83 0.01 0"    rotation="-90 0 0" width="21" height="275"
-    material="color:#8b4513;roughness:0.95"></a-plane>
-  <a-plane position="83 0.01 0"     rotation="-90 0 0" width="21" height="275"
-    material="color:#8b4513;roughness:0.95"></a-plane>
-  <!-- Corner fills -->
-  <a-cylinder position="-72.5 0.015 -144.5" radius="10.5" height="0.04" segments-radial="14"
-    material="color:#8b4513;roughness:0.95"></a-cylinder>
-  <a-cylinder position=" 72.5 0.015 -144.5" radius="10.5" height="0.04" segments-radial="14"
-    material="color:#8b4513;roughness:0.95"></a-cylinder>
-  <a-cylinder position="-72.5 0.015  144.5" radius="10.5" height="0.04" segments-radial="14"
-    material="color:#8b4513;roughness:0.95"></a-cylinder>
-  <a-cylinder position=" 72.5 0.015  144.5" radius="10.5" height="0.04" segments-radial="14"
-    material="color:#8b4513;roughness:0.95"></a-cylinder>
+/* ═══════════════════════════════════════════════
+   LIGHTING — physically correct
+═══════════════════════════════════════════════ */
+// Ambient — sky blue fill
+const ambient = new THREE.HemisphereLight(0xb8d8ff, 0x8b5a20, 0.55);
+scene.add(ambient);
 
-  <!-- ── YARD LINES ── -->
-  <!-- Side lines -->
-  <a-plane position="-72 0.05 0" rotation="-90 0 90" width="277" height="0.5"
-    material="color:#fff;opacity:0.85;transparent:true;shader:flat"></a-plane>
-  <a-plane position=" 72 0.05 0" rotation="-90 0 90" width="277" height="0.5"
-    material="color:#fff;opacity:0.85;transparent:true;shader:flat"></a-plane>
-  <!-- Centre line -->
-  <a-plane position="0 0.05 0"   rotation="-90 0 0" width="145" height="0.45"
-    material="color:#fff;opacity:0.9;transparent:true;shader:flat"></a-plane>
-  <!-- 30-yard -->
-  <a-plane position="0 0.05 -82" rotation="-90 0 0" width="145" height="0.4"
-    material="color:#fff;opacity:0.7;transparent:true;shader:flat"></a-plane>
-  <a-plane position="0 0.05  82" rotation="-90 0 0" width="145" height="0.4"
-    material="color:#fff;opacity:0.7;transparent:true;shader:flat"></a-plane>
-  <!-- 40-yard -->
-  <a-plane position="0 0.05 -55" rotation="-90 0 0" width="145" height="0.35"
-    material="color:#fff;opacity:0.6;transparent:true;shader:flat"></a-plane>
-  <a-plane position="0 0.05  55" rotation="-90 0 0" width="145" height="0.35"
-    material="color:#fff;opacity:0.6;transparent:true;shader:flat"></a-plane>
-  <!-- 60-yard -->
-  <a-plane position="0 0.05 -27" rotation="-90 0 0" width="145" height="0.3"
-    material="color:#fff;opacity:0.5;transparent:true;shader:flat"></a-plane>
-  <a-plane position="0 0.05  27" rotation="-90 0 0" width="145" height="0.3"
-    material="color:#fff;opacity:0.5;transparent:true;shader:flat"></a-plane>
+// Key sun — warm golden afternoon
+const sunLight = new THREE.DirectionalLight(0xffe4a0, 2.8);
+sunLight.position.set(-80, 120, 100);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 1;
+sunLight.shadow.camera.far = 700;
+sunLight.shadow.camera.left = -260;
+sunLight.shadow.camera.right = 260;
+sunLight.shadow.camera.top = 260;
+sunLight.shadow.camera.bottom = -260;
+sunLight.shadow.bias = -0.0003;
+sunLight.shadow.normalBias = 0.02;
+scene.add(sunLight);
 
-  <!-- ── GOAL POSTS ── -->
-  <a-entity position="0 0 -137.5">
-    <a-cylinder position="-3.66 2.6 0" radius="0.11" height="5.2" material="color:#eee;metalness:0.4"></a-cylinder>
-    <a-cylinder position=" 3.66 2.6 0" radius="0.11" height="5.2" material="color:#eee;metalness:0.4"></a-cylinder>
-    <a-cylinder position="0 5.2 0" radius="0.08" height="7.6" rotation="0 0 90" material="color:#eee;metalness:0.4"></a-cylinder>
-  </a-entity>
-  <a-entity position="0 0 137.5">
-    <a-cylinder position="-3.66 2.6 0" radius="0.11" height="5.2" material="color:#eee;metalness:0.4"></a-cylinder>
-    <a-cylinder position=" 3.66 2.6 0" radius="0.11" height="5.2" material="color:#eee;metalness:0.4"></a-cylinder>
-    <a-cylinder position="0 5.2 0" radius="0.08" height="7.6" rotation="0 0 90" material="color:#eee;metalness:0.4"></a-cylinder>
-  </a-entity>
+// Fill — soft blue from opposite side
+const fill = new THREE.DirectionalLight(0xc0d8ff, 0.55);
+fill.position.set(60, 40, -60);
+scene.add(fill);
 
-  <!-- ══════════════════════════════════════
-       PROPOSED LAKE — North
-  ══════════════════════════════════════ -->
-  <a-cylinder position="0 0.06 -196" radius="46" height="0.12" segments-radial="36"
-    material="color:#3d8fc8;roughness:0.05;metalness:0.55;opacity:0.9;transparent:true"
-    class="clickable"
-    data-lbl="Feature" data-name="Proposed Lake"
-    data-desc="Ornamental crescent lake · Natural boundary between polo field and northern crescent villas">
-  </a-cylinder>
-  <a-plane position="0 0.07 -196" rotation="-90 0 0" width="80" height="56"
-    material="color:#6abee8;opacity:0.28;transparent:true;shader:flat"></a-plane>
+/* ═══════════════════════════════════════════════
+   TEXTURE FACTORY — creates PBR materials
+═══════════════════════════════════════════════ */
+const TL = new THREE.TextureLoader();
 
-  <!-- ══════════════════════════════════════
-       CLUBHOUSE — South (z = +185)
-       From render: 3 floors, cream render,
-       deep horizontal slab overhangs,
-       tiered bleacher seating, twin rooftop towers,
-       full-width glazing on floors 1 and 2
-  ══════════════════════════════════════ -->
-  <a-entity id="clubhouse" position="0 0 188"
-    class="clickable"
-    data-lbl="Hospitality" data-name="Clubhouse & Pavilion"
-    data-desc="3-floor luxury clubhouse · 3,419 sqm · Restaurant, sports lounge, 8 skyboxes, tiered spectator stands">
+// Procedural canvas texture helper
+function canvasTex(w, h, fn) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  fn(cv.getContext('2d'));
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
 
-    <!-- Ground floor body — piloti + entrance -->
-    <a-box position="0 1.8 0" width="84" height="3.6" depth="15"
-      material="color:#e8e2d6;roughness:0.7;metalness:0.02;receive-shadow:true;cast-shadow:true"></a-box>
-    <!-- Ground floor glazing strip -->
-    <a-box position="0 2.0 -7.6" width="70" height="2.8" depth="0.25"
-      material="color:#8bbcd4;opacity:0.55;transparent:true;metalness:0.6;roughness:0.05"></a-box>
+// Grass texture — hand-painted in canvas
+const grassTex = canvasTex(512, 512, ctx => {
+  const g = ctx.createLinearGradient(0,0,512,512);
+  g.addColorStop(0,'#2d7a2a'); g.addColorStop(0.5,'#237020');
+  g.addColorStop(1,'#2d7a2a');
+  ctx.fillStyle = g; ctx.fillRect(0,0,512,512);
+  // Blade texture noise
+  for(let i=0;i<4000;i++){
+    ctx.strokeStyle=`rgba(${10+Math.random()*30},${100+Math.random()*40},${10+Math.random()*20},0.18)`;
+    ctx.lineWidth=0.5;
+    ctx.beginPath();
+    const x=Math.random()*512,y=Math.random()*512;
+    ctx.moveTo(x,y); ctx.lineTo(x+(Math.random()-0.5)*3,y-3-Math.random()*6);
+    ctx.stroke();
+  }
+});
+grassTex.repeat.set(24, 48);
 
-    <!-- Horizontal slab overhang — between G and F1 -->
-    <a-box position="0 3.65 0" width="88" height="0.55" depth="18"
-      material="color:#ddd7ca;roughness:0.65"></a-box>
+// Laterite clay texture
+const lateriteTex = canvasTex(256, 256, ctx => {
+  ctx.fillStyle='#8b4020'; ctx.fillRect(0,0,256,256);
+  for(let i=0;i<3000;i++){
+    const x=Math.random()*256,y=Math.random()*256;
+    ctx.fillStyle=`rgba(${100+Math.random()*60},${35+Math.random()*25},${5+Math.random()*15},0.3)`;
+    ctx.fillRect(x,y,1+Math.random()*2,1+Math.random()*2);
+  }
+});
+lateriteTex.repeat.set(18, 32);
 
-    <!-- Floor 1 body — spectator terrace level -->
-    <a-box position="0 6.0 0" width="84" height="4.2" depth="14"
-      material="color:#e8e2d6;roughness:0.7;metalness:0.02;cast-shadow:true"></a-box>
-    <!-- Floor 1 full-width glazing facing field -->
-    <a-box position="0 6.0 -7.1" width="78" height="3.4" depth="0.25"
-      material="color:#8bbcd4;opacity:0.6;transparent:true;metalness:0.65;roughness:0.05"></a-box>
-    <!-- Floor 1 terrace rail (dark timber balustrade from render) -->
-    <a-box position="0 4.15 -7.6" width="82" height="0.9" depth="0.4"
-      material="color:#6b4a2a;roughness:0.8"></a-box>
+// Cream concrete texture (clubhouse / villas)
+const concreteTex = canvasTex(256, 256, ctx => {
+  ctx.fillStyle='#e2ddd5'; ctx.fillRect(0,0,256,256);
+  for(let i=0;i<1200;i++){
+    const v=Math.random()*20-10;
+    ctx.fillStyle=`rgba(${128+v},${124+v},${118+v},0.12)`;
+    ctx.fillRect(Math.random()*256,Math.random()*256,Math.random()*4,Math.random()*4);
+  }
+});
+concreteTex.repeat.set(4, 4);
 
-    <!-- Horizontal slab overhang — between F1 and F2 -->
-    <a-box position="0 8.35 0" width="88" height="0.55" depth="18"
-      material="color:#ddd7ca;roughness:0.65"></a-box>
+// Timber louvre texture (warm blonde oak)
+const timberTex = canvasTex(128, 256, ctx => {
+  for(let y=0;y<256;y++){
+    const t=y/256;
+    const r=Math.floor(190+t*25+Math.random()*8);
+    const g=Math.floor(130+t*15+Math.random()*8);
+    const b=Math.floor(45+t*10+Math.random()*5);
+    ctx.fillStyle=`rgb(${r},${g},${b})`;
+    ctx.fillRect(0,y,128,1);
+  }
+  // Grain lines
+  for(let i=0;i<80;i++){
+    ctx.strokeStyle=`rgba(60,30,5,0.07)`;
+    ctx.lineWidth=0.4;
+    ctx.beginPath();
+    ctx.moveTo(Math.random()*128,0);
+    ctx.lineTo(Math.random()*128+4,256);
+    ctx.stroke();
+  }
+});
+timberTex.repeat.set(3, 1);
 
-    <!-- Floor 2 body -->
-    <a-box position="0 10.5 0" width="84" height="4.0" depth="13"
-      material="color:#e8e2d6;roughness:0.7;metalness:0.02"></a-box>
-    <!-- Floor 2 glazing -->
-    <a-box position="0 10.5 -6.6" width="78" height="3.2" depth="0.25"
-      material="color:#8bbcd4;opacity:0.6;transparent:true;metalness:0.65;roughness:0.05"></a-box>
+// Red laterite brick (stables)
+const brickTex = canvasTex(256, 256, ctx => {
+  ctx.fillStyle='#c04820'; ctx.fillRect(0,0,256,256);
+  // Brick courses
+  for(let row=0;row<12;row++){
+    const y=row*22;
+    const offset=(row%2)*32;
+    for(let col=-1;col<7;col++){
+      const x=col*64+offset;
+      const r=180+Math.random()*40,g=60+Math.random()*25,b=15+Math.random()*15;
+      ctx.fillStyle=`rgb(${r},${g},${b})`;
+      ctx.fillRect(x+1,y+1,61,19);
+      ctx.fillStyle='rgba(60,20,5,0.25)';
+      ctx.fillRect(x,y,64,1); ctx.fillRect(x,y,1,22); // mortar
+    }
+  }
+});
+brickTex.repeat.set(3, 2);
 
-    <!-- Top slab -->
-    <a-box position="0 12.7 0" width="88" height="0.55" depth="18"
-      material="color:#ddd7ca;roughness:0.65"></a-box>
+// Cobblestone (stables yard)
+const cobbleTex = canvasTex(256, 256, ctx => {
+  ctx.fillStyle='#9a8870'; ctx.fillRect(0,0,256,256);
+  for(let i=0;i<200;i++){
+    const x=Math.random()*256,y=Math.random()*256;
+    const r=16+Math.random()*24,rx=r*(0.6+Math.random()*0.8),ry=r*(0.5+Math.random()*0.7);
+    const v=140+Math.random()*40;
+    ctx.fillStyle=`rgb(${v},${v-10},${v-20})`;
+    ctx.beginPath(); ctx.ellipse(x,y,rx,ry,Math.random()*Math.PI,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle='rgba(60,50,40,0.35)'; ctx.lineWidth=1.2;
+    ctx.stroke();
+  }
+});
+cobbleTex.repeat.set(4, 4);
 
-    <!-- Twin rooftop pavilion towers (signature from render) -->
-    <a-box position="-22 15.5 0" width="14" height="5.5" depth="12"
-      material="color:#e8e2d6;roughness:0.7"></a-box>
-    <a-box position=" 22 15.5 0" width="14" height="5.5" depth="12"
-      material="color:#e8e2d6;roughness:0.7"></a-box>
-    <!-- Tower glazing -->
-    <a-box position="-22 15.5 -6.2" width="12" height="4" depth="0.2"
-      material="color:#8bbcd4;opacity:0.6;transparent:true;metalness:0.6;roughness:0.05"></a-box>
-    <a-box position=" 22 15.5 -6.2" width="12" height="4" depth="0.2"
-      material="color:#8bbcd4;opacity:0.6;transparent:true;metalness:0.6;roughness:0.05"></a-box>
+// Water texture
+const waterTex = canvasTex(256, 256, ctx => {
+  const g = ctx.createLinearGradient(0,0,256,256);
+  g.addColorStop(0,'#2a7ec8'); g.addColorStop(0.5,'#4898d8');
+  g.addColorStop(1,'#1a6ab8');
+  ctx.fillStyle=g; ctx.fillRect(0,0,256,256);
+  // Ripple lines
+  for(let i=0;i<30;i++){
+    ctx.strokeStyle='rgba(200,230,255,0.12)';
+    ctx.lineWidth=0.8+Math.random();
+    ctx.beginPath();
+    ctx.moveTo(0,Math.random()*256);
+    ctx.bezierCurveTo(64,Math.random()*256,192,Math.random()*256,256,Math.random()*256);
+    ctx.stroke();
+  }
+});
+waterTex.repeat.set(3, 3);
 
-    <!-- Vertical columns — structural pillars visible in render -->
-    <a-entity>
-      <a-cylinder position="-38 6.5 -7.5" radius="0.55" height="13" material="color:#ddd7ca;roughness:0.7"></a-cylinder>
-      <a-cylinder position="-25 6.5 -7.5" radius="0.55" height="13" material="color:#ddd7ca;roughness:0.7"></a-cylinder>
-      <a-cylinder position="-12 6.5 -7.5" radius="0.55" height="13" material="color:#ddd7ca;roughness:0.7"></a-cylinder>
-      <a-cylinder position="  0 6.5 -7.5" radius="0.55" height="13" material="color:#ddd7ca;roughness:0.7"></a-cylinder>
-      <a-cylinder position=" 12 6.5 -7.5" radius="0.55" height="13" material="color:#ddd7ca;roughness:0.7"></a-cylinder>
-      <a-cylinder position=" 25 6.5 -7.5" radius="0.55" height="13" material="color:#ddd7ca;roughness:0.7"></a-cylinder>
-      <a-cylinder position=" 38 6.5 -7.5" radius="0.55" height="13" material="color:#ddd7ca;roughness:0.7"></a-cylinder>
-    </a-entity>
-
-    <!-- Bleacher seating (tiered steps facing field) -->
-    <a-box position="0 0.4  -9.5" width="82" height="0.8" depth="3.5" material="color:#c8c2b5;roughness:0.85"></a-box>
-    <a-box position="0 1.1  -11.2" width="82" height="0.8" depth="3"   material="color:#c0bab0;roughness:0.85"></a-box>
-    <a-box position="0 1.8  -12.8" width="82" height="0.8" depth="2.8" material="color:#b8b2a8;roughness:0.85"></a-box>
-    <a-box position="0 2.5  -14.2" width="82" height="0.8" depth="2.6" material="color:#b0aaa0;roughness:0.85"></a-box>
-
-    <!-- Parasol umbrellas on terrace (from render) -->
-    <a-cone position="-24 8.8 -5" radius-bottom="2.8" radius-top="0.1" height="0.5"
-      material="color:#e8dfc0;roughness:0.8;shader:flat"></a-cone>
-    <a-cone position="  0 8.8 -5" radius-bottom="2.8" radius-top="0.1" height="0.5"
-      material="color:#e8dfc0;roughness:0.8;shader:flat"></a-cone>
-    <a-cone position=" 24 8.8 -5" radius-bottom="2.8" radius-top="0.1" height="0.5"
-      material="color:#e8dfc0;roughness:0.8;shader:flat"></a-cone>
-    <a-cylinder position="-24 7.0 -5" radius="0.06" height="3.4" material="color:#aaa;roughness:0.5"></a-cylinder>
-    <a-cylinder position="  0 7.0 -5" radius="0.06" height="3.4" material="color:#aaa;roughness:0.5"></a-cylinder>
-    <a-cylinder position=" 24 7.0 -5" radius="0.06" height="3.4" material="color:#aaa;roughness:0.5"></a-cylinder>
-
-    <!-- Entrance steps centre -->
-    <a-box position="0 0.25 -16" width="12" height="0.5" depth="2" material="color:#d0cab8;roughness:0.8"></a-box>
-    <a-box position="0 0.55 -17.2" width="10" height="0.5" depth="1.8" material="color:#c8c2b0;roughness:0.8"></a-box>
-  </a-entity>
-
-  <!-- ══════════════════════════════════════
-       3-BED PREMIUM VILLAS — WEST ROW
-       From render: 3 levels, white-grey concrete
-       + blonde timber vertical louvres, flat roof,
-       glass balustrades, undercroft parking
-       Positioned from z=-78 to z=+78, 12m spacing
-  ══════════════════════════════════════ -->
-  <a-entity id="villas-w">
-    <a-entity position="-102 0 0">
-      <!-- VILLA MACRO — generates consistent units -->
-      <!-- 14 villas, x=-102, z steps every 12m from -78 to +78 -->
-      <!-- Each villa: 10m wide × 10m deep, 3 levels, 10.5m tall -->
-    </a-entity>
-  </a-entity>
-
-  <!-- ══════════════════════════════════════
-       3-BED PREMIUM VILLAS — EAST ROW
-  ══════════════════════════════════════ -->
-  <a-entity id="villas-e">
-    <a-entity position="102 0 0"></a-entity>
-  </a-entity>
-
-  <!-- Villas generated by JS below for both rows -->
-
-  <!-- ══════════════════════════════════════
-       LOFT APARTMENT BLOCKS — East side
-       From render: 7 floors, white render,
-       dark vertical louvre fins, timber centre panel,
-       glass balconies, dramatic curved wing canopy
-  ══════════════════════════════════════ -->
-  <!-- Block 1 -->
-  <a-entity id="apt1" position="138 0 20"
-    class="clickable"
-    data-lbl="Residential" data-name="Loft Apartment Block"
-    data-desc="2-bed loft terrace · 125 sqm · 96 units total · Curved signature roofline">
-
-    <!-- Main body — 32m wide, 7 floors = 23m tall, 16m deep -->
-    <a-box position="0 11.5 0" width="32" height="23" depth="16"
-      material="color:#e4e0da;roughness:0.65;metalness:0.04;cast-shadow:true"></a-box>
-
-    <!-- Central timber louvre panel -->
-    <a-box position="0 11.5 -8.1" width="10" height="20" depth="0.35"
-      material="color:#c8923a;roughness:0.75"></a-box>
-
-    <!-- Dark louvre fin panels — left and right of centre -->
-    <a-box position="-12 11.5 -8.1" width="8" height="20" depth="0.35"
-      material="color:#2a2a2a;roughness:0.7"></a-box>
-    <a-box position=" 12 11.5 -8.1" width="8" height="20" depth="0.35"
-      material="color:#2a2a2a;roughness:0.7"></a-box>
-
-    <!-- Floor slab lines (balcony edges, every 3.3m) -->
-    <a-box position="0 3.3  -8.1" width="32" height="0.4" depth="1.2" material="color:#d8d4ce;roughness:0.6"></a-box>
-    <a-box position="0 6.6  -8.1" width="32" height="0.4" depth="1.2" material="color:#d8d4ce;roughness:0.6"></a-box>
-    <a-box position="0 9.9  -8.1" width="32" height="0.4" depth="1.2" material="color:#d8d4ce;roughness:0.6"></a-box>
-    <a-box position="0 13.2 -8.1" width="32" height="0.4" depth="1.2" material="color:#d8d4ce;roughness:0.6"></a-box>
-    <a-box position="0 16.5 -8.1" width="32" height="0.4" depth="1.2" material="color:#d8d4ce;roughness:0.6"></a-box>
-    <a-box position="0 19.8 -8.1" width="32" height="0.4" depth="1.2" material="color:#d8d4ce;roughness:0.6"></a-box>
-
-    <!-- Balcony glazing strips per floor -->
-    <a-box position="0 1.8  -8.4" width="28" height="1.8" depth="0.2" material="color:#7ab8d4;opacity:0.5;transparent:true;metalness:0.7;roughness:0.05"></a-box>
-    <a-box position="0 5.1  -8.4" width="28" height="1.8" depth="0.2" material="color:#7ab8d4;opacity:0.5;transparent:true;metalness:0.7;roughness:0.05"></a-box>
-    <a-box position="0 8.4  -8.4" width="28" height="1.8" depth="0.2" material="color:#7ab8d4;opacity:0.5;transparent:true;metalness:0.7;roughness:0.05"></a-box>
-    <a-box position="0 11.7 -8.4" width="28" height="1.8" depth="0.2" material="color:#7ab8d4;opacity:0.5;transparent:true;metalness:0.7;roughness:0.05"></a-box>
-    <a-box position="0 15.0 -8.4" width="28" height="1.8" depth="0.2" material="color:#7ab8d4;opacity:0.5;transparent:true;metalness:0.7;roughness:0.05"></a-box>
-    <a-box position="0 18.3 -8.4" width="28" height="1.8" depth="0.2" material="color:#7ab8d4;opacity:0.5;transparent:true;metalness:0.7;roughness:0.05"></a-box>
-    <a-box position="0 21.6 -8.4" width="28" height="1.8" depth="0.2" material="color:#7ab8d4;opacity:0.5;transparent:true;metalness:0.7;roughness:0.05"></a-box>
-
-    <!-- Signature curved wing canopy (the wave-roof element from render) -->
-    <a-torus position="0 25.5 -1" radius="14" radius-tubular="1.1"
-      segments-radial="24" segments-tubular="8"
-      rotation="90 0 0" arc="180"
-      material="color:#eeeae4;roughness:0.5;metalness:0.08"></a-torus>
-
-    <!-- Piloti ground floor openings -->
-    <a-box position="0 1.2 -8" width="30" height="2.4" depth="0.3"
-      material="color:#1a1a1a;opacity:0.6;transparent:true;shader:flat"></a-box>
-
-    <!-- Ground paving -->
-    <a-plane position="0 0.02 0" rotation="-90 0 0" width="42" height="24"
-      material="color:#c0bbb0;roughness:0.9"></a-plane>
-  </a-entity>
-
-  <!-- Apt Block 2 — behind block 1 -->
-  <a-entity position="148 0 -28"
-    class="clickable"
-    data-lbl="Residential" data-name="Loft Apartment Block"
-    data-desc="2-bed loft terrace · 125 sqm · East crescent · Full estate and lake views from upper floors">
-    <a-box position="0 11.5 0" width="32" height="23" depth="16"
-      material="color:#e8e4de;roughness:0.65;cast-shadow:true"></a-box>
-    <a-box position="0 11.5 -8.1" width="10" height="20" depth="0.35"
-      material="color:#c8923a;roughness:0.75"></a-box>
-    <a-box position="-12 11.5 -8.1" width="8" height="20" depth="0.35"
-      material="color:#2a2a2a;roughness:0.7"></a-box>
-    <a-box position=" 12 11.5 -8.1" width="8" height="20" depth="0.35"
-      material="color:#2a2a2a;roughness:0.7"></a-box>
-    <a-box position="0 23.2 0" width="36" height="0.5" depth="20"
-      material="color:#ddd9d3;roughness:0.6"></a-box>
-    <!-- Wing canopy -->
-    <a-torus position="0 25.5 -1" radius="14" radius-tubular="1.1"
-      segments-radial="24" segments-tubular="8" rotation="90 0 0" arc="180"
-      material="color:#eeeae4;roughness:0.5;metalness:0.08"></a-torus>
-  </a-entity>
-
-  <!-- ══════════════════════════════════════
-       HORSE STABLES — South-west
-       From render: single storey red laterite brick,
-       open timber roof trusses, terracotta corrugated
-       tiles, cobblestone yard, tropical palms
-  ══════════════════════════════════════ -->
-  <a-entity id="stables" position="-168 0 140"
-    class="clickable"
-    data-lbl="Equestrian" data-name="Horse Stables"
-    data-desc="4 blocks · 56 stalls · Red laterite brick · Open timber roof trusses · Cobblestone courtyard">
-
-    <!-- Stable block 1 -->
-    <a-box position="0 1.9 0"  width="36" height="3.8" depth="14"
-      material="color:#c8522a;roughness:0.92;metalness:0"></a-box>
-    <!-- Brick texture suggestion - darker mortar band -->
-    <a-box position="0 0.3 0" width="36" height="0.6" depth="14.2"
-      material="color:#b84820;roughness:0.95"></a-box>
-    <!-- Exposed timber roof truss overhang -->
-    <a-box position="0 3.9 -1" width="40" height="0.35" depth="18"
-      material="color:#8b6010;roughness:0.88"></a-box>
-    <!-- Terracotta corrugated roof — warm orange-red slope -->
-    <a-wedge position="0 4.4 1" width="40" height="1.8" depth="16"
-      material="color:#c8602a;roughness:0.9" rotation="0 180 0"></a-wedge>
-    <!-- Open stall bays — dark timber louvre suggestion -->
-    <a-box position="-14 2.0 -7.1" width="6" height="2.8" depth="0.3"
-      material="color:#6b3810;roughness:0.85;opacity:0.8;transparent:true"></a-box>
-    <a-box position=" -4 2.0 -7.1" width="6" height="2.8" depth="0.3"
-      material="color:#6b3810;roughness:0.85;opacity:0.8;transparent:true"></a-box>
-    <a-box position="  6 2.0 -7.1" width="6" height="2.8" depth="0.3"
-      material="color:#6b3810;roughness:0.85;opacity:0.8;transparent:true"></a-box>
-    <a-box position=" 16 2.0 -7.1" width="6" height="2.8" depth="0.3"
-      material="color:#6b3810;roughness:0.85;opacity:0.8;transparent:true"></a-box>
-
-    <!-- Stable block 2 — behind -->
-    <a-box position="0 1.9 20" width="36" height="3.8" depth="14"
-      material="color:#c85025;roughness:0.92"></a-box>
-    <a-box position="0 3.9 19" width="40" height="0.35" depth="18"
-      material="color:#8b6010;roughness:0.88"></a-box>
-    <a-wedge position="0 4.4 21" width="40" height="1.8" depth="16"
-      material="color:#c8602a;roughness:0.9" rotation="0 180 0"></a-wedge>
-
-    <!-- Cobblestone courtyard -->
-    <a-plane position="0 0.02 -14" rotation="-90 0 0" width="50" height="14"
-      material="color:#9a8870;roughness:0.95"></a-plane>
-
-    <!-- Bollard lights (from render) -->
-    <a-cylinder position="-18 0.5 -12" radius="0.1" height="1.0" material="color:#888;metalness:0.5"></a-cylinder>
-    <a-cylinder position=" -6 0.5 -12" radius="0.1" height="1.0" material="color:#888;metalness:0.5"></a-cylinder>
-    <a-cylinder position="  6 0.5 -12" radius="0.1" height="1.0" material="color:#888;metalness:0.5"></a-cylinder>
-    <a-cylinder position=" 18 0.5 -12" radius="0.1" height="1.0" material="color:#888;metalness:0.5"></a-cylinder>
-  </a-entity>
-
-  <!-- ══════════════════════════════════════
-       TRAINING FIELD — West
-  ══════════════════════════════════════ -->
-  <a-plane position="-188 0.01 -55" rotation="-90 0 0" width="100" height="165"
-    material="color:#2e7a2e;roughness:0.92"
-    class="clickable"
-    data-lbl="Equestrian" data-name="Training Field"
-    data-desc="Polo academy practice ground · 5,000 sqm · 30/40/60-yard practice zones">
-  </a-plane>
-  <a-plane position="-188 0.005 -55" rotation="-90 0 0" width="120" height="185"
-    material="color:#8b4513;roughness:0.95"></a-plane>
-
-  <!-- ══════════════════════════════════════
-       CRESCENT VILLAS — North arc
-  ══════════════════════════════════════ -->
-  <a-entity id="crescent"></a-entity>
-
-  <!-- ══════════════════════════════════════
-       TREE LINE — Perimeter
-  ══════════════════════════════════════ -->
-  <a-entity id="trees-s"></a-entity>
-  <a-entity id="trees-n"></a-entity>
-  <a-entity id="trees-w"></a-entity>
-  <a-entity id="trees-e"></a-entity>
-
-</a-scene>
-
-<script>
-/* ═══════════════════════════════════════════════════
-   VIEWPOINTS & INTERACTION
-════════════════════════════════════════════════════ */
-const VPS = {
-  centre:   { p:[0,    1.65, 0],    r:[0,  0,   0] },
-  clubhouse:{ p:[0,    4.5,  165],  r:[-4, 180, 0] },
-  lake:     { p:[0,    1.65, -155], r:[0,  0,   0] },
-  'villa-w':{ p:[-90,  1.65, 0],    r:[0,  90,  0] },
-  'villa-e':{ p:[90,   1.65, 0],    r:[0,  270, 0] },
-  stables:  { p:[-150, 1.65, 120],  r:[0,  30,  0] },
-};
-
-let cur = 'centre';
-let hinted = false;
-
-const ZONE_DATA = {
-  'polo-field':{ lbl:'Main Field',   name:'International Polo Field',   desc:'FIP-standard · 275m × 145m · Red laterite clay pony track · 30/40/60-yard markings' },
-  'lake':      { lbl:'Feature',      name:'Proposed Lake',              desc:'Ornamental crescent lake · Natural estate boundary · Visual focal point north of field' },
-  'clubhouse': { lbl:'Hospitality',  name:'Clubhouse & Pavilion',       desc:'3-floor luxury clubhouse · 3,419 sqm · Sports lounge, restaurant, 8 skyboxes, spectator stands' },
-  'villa-w':   { lbl:'Residential',  name:'Premium Villa — West',       desc:'3-bed polo-view · 330 sqm · Undercroft parking · Glass balustrades · Blonde timber louvres' },
-  'villa-e':   { lbl:'Residential',  name:'Premium Villa — East',       desc:'3-bed lake-view · 330 sqm · Timber louvre screens · Direct polo field sightlines' },
-  'apt':       { lbl:'Residential',  name:'Loft Apartment Block',       desc:'2-bed loft terrace · 125 sqm · 96 units · Signature curved wing roofline · Timber centre panels' },
-  'stables':   { lbl:'Equestrian',   name:'Horse Stables',              desc:'4 blocks · 56 stalls · Red laterite brick · Exposed timber trusses · Terracotta tiled roof' },
-  'training':  { lbl:'Equestrian',   name:'Training Field',             desc:'Polo academy · 5,000 sqm · Practice zones · Adjacent to stables and quarantine paddocks' },
-  'crescent':  { lbl:'Residential',  name:'Crescent Villa',             desc:'Northern arc residence · Overlooks ornamental lake and polo field · Premium position' },
-};
-
-/* ── Viewpoint navigation ── */
-function go(id) {
-  const vp = VPS[id]; if (!vp) return;
-  cur = id;
-  document.querySelectorAll('.vp-btn').forEach(b => b.classList.remove('on'));
-  const btn = document.getElementById('vb-' + id);
-  if (btn) btn.classList.add('on');
-
-  const rig = document.getElementById('rig');
-  rig.setAttribute('animation', {
-    property: 'position',
-    to: vp.p.join(' '),
-    dur: 1000,
-    easing: 'easeInOutCubic',
+/* ═══════════════════════════════════════════════
+   MATERIAL LIBRARY
+═══════════════════════════════════════════════ */
+function mat(color, rough=0.85, metal=0, tex=null, opts={}) {
+  const m = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(color),
+    roughness: rough, metalness: metal,
+    ...opts,
   });
-  document.getElementById('cam').setAttribute('rotation', `${vp.r[0]} ${vp.r[1]} ${vp.r[2]}`);
-  dismiss();
-
-  // Show contextual info
-  const id2zone = {
-    centre:'polo-field', clubhouse:'clubhouse', lake:'lake',
-    'villa-w':'villa-w', 'villa-e':'villa-e', stables:'stables',
-  };
-  showInfo(ZONE_DATA[id2zone[id]]);
+  if (tex) { m.map = tex; m.color.set(0xffffff); }
+  return m;
 }
 
-function showInfo(z) {
-  if (!z) return;
-  document.getElementById('zl').textContent = z.lbl;
-  document.getElementById('zn').textContent = z.name;
-  document.getElementById('zd').textContent = z.desc;
+const M = {
+  grass:    new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.92, metalness: 0 }),
+  laterite: new THREE.MeshStandardMaterial({ map: lateriteTex, roughness: 0.95, metalness: 0 }),
+  concrete: new THREE.MeshStandardMaterial({ map: concreteTex, roughness: 0.72, metalness: 0.02 }),
+  concreteLight: new THREE.MeshStandardMaterial({ color: 0xe6e2d8, roughness: 0.68, metalness: 0.02 }),
+  glass:    new THREE.MeshStandardMaterial({ color: 0x8bbcd4, roughness: 0.05, metalness: 0.7, transparent: true, opacity: 0.55 }),
+  glassDark:new THREE.MeshStandardMaterial({ color: 0x3a5870, roughness: 0.05, metalness: 0.8, transparent: true, opacity: 0.65 }),
+  timber:   new THREE.MeshStandardMaterial({ map: timberTex, roughness: 0.75, metalness: 0 }),
+  timberDark:new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.88, metalness: 0 }),
+  brick:    new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.92, metalness: 0 }),
+  cobble:   new THREE.MeshStandardMaterial({ map: cobbleTex, roughness: 0.94, metalness: 0 }),
+  water:    new THREE.MeshStandardMaterial({ map: waterTex, roughness: 0.08, metalness: 0.55, transparent: true, opacity: 0.88 }),
+  earth:    new THREE.MeshStandardMaterial({ color: 0x6a3818, roughness: 0.96, metalness: 0 }),
+  white:    new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.62, metalness: 0.03 }),
+  cream:    new THREE.MeshStandardMaterial({ color: 0xddd8cc, roughness: 0.70, metalness: 0.02 }),
+  darkLouvre: new THREE.MeshStandardMaterial({ color: 0x282828, roughness: 0.7, metalness: 0.1 }),
+  roofTile: new THREE.MeshStandardMaterial({ color: 0xb84818, roughness: 0.88, metalness: 0 }),
+  rail:     new THREE.MeshStandardMaterial({ color: 0xaaddee, roughness: 0.05, metalness: 0.7, transparent: true, opacity: 0.38 }),
+  line:     new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0 }),
+  post:     new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.4, metalness: 0.5 }),
+  paving:   new THREE.MeshStandardMaterial({ color: 0xb4afa6, roughness: 0.88, metalness: 0 }),
+  parasol:  new THREE.MeshStandardMaterial({ color: 0xe8dcb8, roughness: 0.82, metalness: 0 }),
+  trunkM:   new THREE.MeshStandardMaterial({ color: 0x5a3210, roughness: 0.94, metalness: 0 }),
+  wave:     new THREE.MeshStandardMaterial({ color: 0xeeeae2, roughness: 0.45, metalness: 0.08 }),
+};
+
+/* ═══════════════════════════════════════════════
+   GEOMETRY HELPERS
+═══════════════════════════════════════════════ */
+function box(w, h, d, m, rx=0, ry=0, rz=0) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.rotation.set(rx, ry, rz);
+  return mesh;
+}
+function cyl(rt, rb, h, m, seg=18) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
+}
+function plane(w, d, m) {
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m);
+  mesh.receiveShadow = true;
+  mesh.rotation.x = -Math.PI/2;
+  return mesh;
+}
+function add(parent, child, x=0, y=0, z=0) {
+  child.position.set(x, y, z);
+  parent.add(child);
+  return child;
+}
+function grp() { return new THREE.Group(); }
+
+/* ═══════════════════════════════════════════════
+   GROUND
+═══════════════════════════════════════════════ */
+// Red laterite base earth
+const ground = plane(700, 700, M.laterite);
+ground.receiveShadow = true;
+scene.add(ground);
+
+/* ═══════════════════════════════════════════════
+   POLO FIELD — 275m × 145m
+   Origin at centre
+═══════════════════════════════════════════════ */
+const fieldGrp = grp();
+scene.add(fieldGrp);
+
+// Main grass
+const grassPlane = plane(145, 275, M.grass);
+add(fieldGrp, grassPlane, 0, 0.02, 0);
+
+// Mow stripes — alternating opacity overlay
+const stripeMat = new THREE.MeshStandardMaterial({ color: 0x1a5a1a, transparent: true, opacity: 0.22, roughness: 1 });
+[-110,-55,0,55,110].forEach((z,i) => {
+  if(i%2===0) {
+    const s = plane(145, 55, stripeMat);
+    add(fieldGrp, s, 0, 0.04, z);
+  }
+});
+
+// Pony track — laterite surround
+const trackMat = new THREE.MeshStandardMaterial({ map: lateriteTex, roughness: 0.95, metalness: 0 });
+[[0, -155.5, 187, 21],[0, 155.5, 187, 21],[-83, 0, 21, 275],[83, 0, 21, 275]].forEach(([x,z,w,d]) => {
+  const t = plane(w, d, trackMat);
+  add(fieldGrp, t, x, 0.01, z);
+});
+
+// Corner arc fills
+const arcGeo = new THREE.CylinderGeometry(10.5, 10.5, 0.06, 20, 1, false, 0, Math.PI/2);
+[[-72.5,-144.5,0],[ 72.5,-144.5,Math.PI/2],[-72.5,144.5,-Math.PI/2],[72.5,144.5,Math.PI]].forEach(([x,z,ry]) => {
+  const arc = new THREE.Mesh(arcGeo, trackMat);
+  arc.position.set(x, 0.015, z); arc.rotation.y = ry;
+  arc.receiveShadow = true;
+  fieldGrp.add(arc);
+});
+
+// Yard line markings
+[0,-82,82,-55,55,-27,27].forEach((z,i) => {
+  const lm = plane(145, i===0?0.5:0.4, M.line);
+  lm.material = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.5, transparent:true, opacity: i===0?0.9:0.65 });
+  add(fieldGrp, lm, 0, 0.055, z);
+});
+// Side lines
+[-72,72].forEach(x => {
+  const lm = plane(0.45, 275, M.line);
+  lm.material.transparent = true; lm.material.opacity = 0.75;
+  add(fieldGrp, lm, x, 0.055, 0);
+});
+
+// Goal posts — each end
+function goalPost(z) {
+  const g = grp();
+  const pm = new THREE.MeshStandardMaterial({ color:0xf0f0f0, roughness:0.35, metalness:0.55 });
+  // Two uprights
+  add(g, cyl(0.1,0.1,5.2,pm), -3.66, 2.6, 0);
+  add(g, cyl(0.1,0.1,5.2,pm),  3.66, 2.6, 0);
+  // Crossbar
+  const cb = cyl(0.08,0.08,7.6,pm);
+  cb.rotation.z = Math.PI/2;
+  add(g, cb, 0, 5.2, 0);
+  fieldGrp.add(g);
+  g.position.set(0,0,z);
+  return g;
+}
+goalPost(-137.5); goalPost(137.5);
+
+/* ═══════════════════════════════════════════════
+   PROPOSED LAKE
+═══════════════════════════════════════════════ */
+const lakeGeo = new THREE.CylinderGeometry(46, 46, 0.15, 36);
+const lake = new THREE.Mesh(lakeGeo, M.water);
+lake.position.set(0, 0.08, -196);
+lake.receiveShadow = true;
+scene.add(lake);
+
+/* ═══════════════════════════════════════════════
+   CLUBHOUSE — South face
+   From render: 3 floors, cream sand render,
+   deep horizontal slab overhangs, full-width glazing,
+   twin rooftop pavilion towers, tiered bleachers
+═══════════════════════════════════════════════ */
+function buildClubhouse() {
+  const g = grp();
+
+  // Ground floor — piloti base
+  const gf = box(86, 3.8, 16, M.white);
+  add(g, gf, 0, 1.9, 0);
+
+  // Ground floor glazing facing field (north face)
+  const gfg = box(72, 3.0, 0.22, M.glass);
+  add(g, gfg, 0, 2.2, -8.1);
+
+  // Slab overhang G→F1
+  const s0 = box(90, 0.55, 18.5, M.cream);
+  add(g, s0, 0, 3.82, 0);
+
+  // Floor 1
+  const f1 = box(86, 4.4, 15, M.white);
+  add(g, f1, 0, 6.2, 0);
+
+  // F1 full-width glazing
+  const f1g = box(80, 3.6, 0.22, M.glass);
+  add(g, f1g, 0, 6.2, -7.6);
+
+  // F1 balcony rail — dark timber from render
+  const f1r = box(84, 1.0, 0.4, M.timberDark);
+  add(g, f1r, 0, 4.1, -8.1);
+
+  // Parasol umbrellas on terrace
+  const pm = new THREE.MeshStandardMaterial({ color:0xe8dcb8, roughness:0.82 });
+  [-25,0,25].forEach(x => {
+    const stalk = cyl(0.06,0.06,3.5, M.paving);
+    add(g, stalk, x, 6.0, -5.5);
+    // Umbrella canopy — flat cone approximation
+    const umbrella = new THREE.Mesh(
+      new THREE.ConeGeometry(2.9, 0.45, 16, 1, true),
+      pm
+    );
+    umbrella.castShadow = true;
+    add(g, umbrella, x, 7.9, -5.5);
+  });
+
+  // Slab overhang F1→F2
+  const s1 = box(90, 0.55, 18.5, M.cream);
+  add(g, s1, 0, 8.65, 0);
+
+  // Floor 2
+  const f2 = box(86, 4.2, 14, M.white);
+  add(g, f2, 0, 10.85, 0);
+
+  // F2 glazing
+  const f2g = box(80, 3.4, 0.22, M.glass);
+  add(g, f2g, 0, 10.85, -7.1);
+
+  // Top slab
+  const topSlab = box(90, 0.55, 18.5, M.cream);
+  add(g, topSlab, 0, 13.1, 0);
+
+  // Twin rooftop pavilion towers (signature element from render)
+  [-22, 22].forEach(x => {
+    const tower = box(14, 5.8, 12, M.white);
+    add(g, tower, x, 16.3, 0);
+    // Tower glazing
+    const tg = box(12, 4.2, 0.22, M.glass);
+    add(g, tg, x, 16.3, -6.1);
+    // Tower top slab
+    const ts = box(15, 0.5, 13, M.cream);
+    add(g, ts, x, 19.5, 0);
+  });
+
+  // Structural columns — 7 across facade
+  for(let i=-3;i<=3;i++) {
+    const col = cyl(0.52, 0.52, 13.5, M.cream, 12);
+    add(g, col, i*13, 6.75, -7.8);
+  }
+
+  // Bleacher steps — 4 tiers
+  [[0, 0.42, -10], [0, 1.18, -11.8], [0, 1.94, -13.4], [0, 2.7, -14.8]].forEach(([x,y,z]) => {
+    const step = box(84, 0.82, 3.2, M.paving);
+    add(g, step, x, y, z);
+  });
+
+  // Entrance steps centre
+  const es1 = box(13, 0.5, 2.2, M.paving); add(g, es1, 0, 0.25, -16.5);
+  const es2 = box(11, 0.5, 2.0, M.paving); add(g, es2, 0, 0.72, -17.8);
+
+  // Clubhouse paving apron
+  const apron = plane(100, 20, M.paving);
+  add(g, apron, 0, 0.015, 12);
+
+  // Logo/signage facade line (decorative horizontal band, darker)
+  const band = box(86, 0.18, 0.1, new THREE.MeshStandardMaterial({ color:0xc8a840, roughness:0.4, metalness:0.3 }));
+  add(g, band, 0, 3.7, -8.2);
+
+  g.position.set(0, 0, 188);
+  scene.add(g);
+
+  // Click target for info
+  gf.userData = { zone:'clubhouse', lbl:'Hospitality', name:'Clubhouse & Pavilion',
+    desc:'3-floor luxury clubhouse · 3,419 sqm · Sports lounge, restaurant, 8 skyboxes, tiered spectator stands' };
+  clickables.push(gf);
+}
+
+/* ═══════════════════════════════════════════════
+   3-BED VILLA
+   From render: 3 levels, grey concrete + blonde
+   timber louvres, flat roof, glass balustrade,
+   undercroft piloti base
+═══════════════════════════════════════════════ */
+function makeVilla(parentGrp, px, pz, facingEast) {
+  const g = grp();
+  const fz = facingEast ? 1 : -1;
+
+  // Undercroft / piloti base — grey concrete
+  const base = box(10, 2.6, 10, M.paving);
+  add(g, base, 0, 1.3, 0);
+  base.castShadow = true;
+
+  // Carport opening (dark void) — recessed face
+  const cpVoid = box(7.2, 2.0, 0.22, M.glassDark);
+  add(g, cpVoid, 0, 1.0, fz * -5.1);
+
+  // Plinth base slab
+  const ps = box(11, 0.55, 11.5, M.cream);
+  add(g, ps, 0, 2.65, 0);
+
+  // Floor 1 body
+  const f1 = box(10, 5.8, 10, M.concrete);
+  add(g, f1, 0, 5.8, 0);
+  f1.castShadow = true;
+
+  // Floor 1 — timber louvre panel (left 40%)
+  const t1 = box(4.0, 4.8, 0.3, M.timber);
+  add(g, t1, -2.8, 5.8, fz * -5.15);
+
+  // Floor 1 — glass right side
+  const g1 = box(4.2, 3.8, 0.22, M.glass);
+  add(g, g1, 2.5, 5.8, fz * -5.15);
+
+  // Floor 1 — glass balustrade
+  const r1 = box(9.2, 1.0, 0.16, M.rail);
+  add(g, r1, 0, 3.0, fz * -5.25);
+
+  // Slab F1→F2
+  const s12 = box(11.5, 0.52, 11.8, M.cream);
+  add(g, s12, 0, 8.85, 0);
+
+  // Floor 2 body — slightly cantilevered
+  const f2 = box(10.5, 5.8, 10.5, M.concrete);
+  add(g, f2, 0, 12.0, 0);
+  f2.castShadow = true;
+
+  // Floor 2 — full-width timber louvre
+  const t2 = box(8.5, 4.8, 0.3, M.timber);
+  add(g, t2, 0, 12.0, fz * -5.36);
+
+  // Floor 2 — glazing behind louvres (warmly lit interior feel)
+  const g2 = box(8.5, 3.5, 0.22, M.glass);
+  add(g, g2, 0, 12.0, fz * -5.1);
+
+  // Floor 2 glass balustrade
+  const r2 = box(9.8, 1.0, 0.16, M.rail);
+  add(g, r2, 0, 9.4, fz * -5.3);
+
+  // Flat roof slab — sharp edge, minimal overhang
+  const roof = box(11.5, 0.52, 11.5, M.cream);
+  add(g, roof, 0, 15.15, 0);
+
+  // Small planters on balcony (detail from render)
+  [-4, 4].forEach(x => {
+    const pt = cyl(0.28, 0.35, 0.45, M.earth, 8);
+    add(g, pt, x, 3.55, fz * -5.2);
+    // Foliage
+    const fo = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 6),
+      new THREE.MeshStandardMaterial({ color:0x2a7a1a, roughness:0.92 }));
+    fo.castShadow = true;
+    add(g, fo, x, 4.2, fz * -5.2);
+  });
+
+  g.position.set(px, 0, pz);
+
+  // Click target
+  g.traverse(child => { if(child.isMesh && child === base) {
+    child.userData = { zone:'villa', lbl:'Residential', name: facingEast ? 'Premium Villa — East' : 'Premium Villa — West',
+      desc:'3-bed polo-view villa · 330 sqm · Timber louvre screens · Glass balustrades · Undercroft parking' };
+    clickables.push(child);
+  }});
+
+  parentGrp.add(g);
+  return g;
+}
+
+function buildVillas() {
+  const wG = grp(); wG.position.set(-102, 0, 0); scene.add(wG);
+  const eG = grp(); eG.position.set( 102, 0, 0); scene.add(eG);
+  for(let i=0;i<14;i++) {
+    makeVilla(wG, 0, -78 + i*12, false);
+    makeVilla(eG, 0, -78 + i*12, true);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   LOFT APARTMENT BLOCK
+   From render: 7 floors, white render, dark louvre
+   fins, timber centre panel, curved wing canopy
+═══════════════════════════════════════════════ */
+function buildApartments() {
+  [[138, 20],[148, -28]].forEach(([px, pz], idx) => {
+    const g = grp();
+
+    // Main body — 7 floors
+    const body = box(32, 23, 16, M.white);
+    add(g, body, 0, 11.5, 0);
+    body.castShadow = true;
+
+    // Centre timber louvre panel
+    const ctp = box(10, 21, 0.35, M.timber);
+    add(g, ctp, 0, 11.5, -8.15);
+
+    // Dark vertical louvre fins — left and right
+    const dlL = box(8, 21, 0.35, M.darkLouvre);
+    add(g, dlL, -12, 11.5, -8.15);
+    const dlR = box(8, 21, 0.35, M.darkLouvre);
+    add(g, dlR, 12, 11.5, -8.15);
+
+    // Per-floor slab edges + glazing
+    for(let fl=0; fl<7; fl++) {
+      const y = fl * 3.3;
+      // Slab edge
+      const slb = box(33, 0.4, 1.3, M.cream);
+      add(g, slb, 0, y, -8.15);
+      // Glazing strip
+      const glz = box(29, 1.8, 0.22, M.glass);
+      add(g, glz, 0, y + 1.5, -8.45);
+      // Balcony rail
+      const rgl = box(30, 0.85, 0.15, M.rail);
+      add(g, rgl, 0, y + 0.05, -8.5);
+    }
+
+    // Piloti ground (open base)
+    const piloti = box(30, 2.6, 0.25, M.glassDark);
+    add(g, piloti, 0, 1.3, -8.1);
+
+    // Signature curved wing canopy (the wave roofline from render)
+    // Approximated with a torus arc
+    const torusGeo = new THREE.TorusGeometry(14, 1.1, 10, 28, Math.PI);
+    const torusMesh = new THREE.Mesh(torusGeo, M.wave);
+    torusMesh.castShadow = true;
+    torusMesh.rotation.x = Math.PI/2;
+    add(g, torusMesh, 0, 25.0, -1);
+
+    // Ground paving
+    const gpv = plane(44, 26, M.paving);
+    add(g, gpv, 0, 0.02, 0);
+
+    // Click
+    body.userData = { zone:'loft', lbl:'Residential', name:'Loft Apartment Block',
+      desc:'2-bed loft terrace · 125 sqm · 96 units · Signature curved wing roofline' };
+    clickables.push(body);
+
+    g.position.set(px, 0, pz);
+    scene.add(g);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   HORSE STABLES
+   From render: single storey vivid red-orange
+   laterite brick, exposed timber trusses,
+   terracotta corrugated tile roof, cobblestone yard
+═══════════════════════════════════════════════ */
+function buildStables() {
+  const g = grp();
+
+  // Stable block 1
+  const sb1 = box(38, 3.9, 14, M.brick);
+  add(g, sb1, 0, 1.95, 0);
+  sb1.castShadow = true;
+
+  // Low brick plinth
+  const lp = box(38, 0.6, 14.2, new THREE.MeshStandardMaterial({ color:0xa03818, roughness:0.94 }));
+  add(g, lp, 0, 0.3, 0);
+
+  // Roof — terracotta, gabled
+  const rfm = new THREE.MeshStandardMaterial({ color:0xc85520, roughness:0.88 });
+  const roofL = box(38, 0.4, 10, rfm);
+  roofL.rotation.x = 0.3;
+  add(g, roofL, 0, 4.3, -2.5);
+  const roofR = box(38, 0.4, 10, rfm);
+  roofR.rotation.x = -0.3;
+  add(g, roofR, 0, 4.3, 2.5);
+
+  // Timber truss overhang — front
+  const trussBar = box(40, 0.35, 0.25, M.timberDark);
+  add(g, trussBar, 0, 4.15, -8.5);
+  // Truss support angled members
+  for(let i=-3;i<=3;i++) {
+    const tm = box(0.22, 0.22, 3.5, M.timberDark);
+    tm.rotation.x = 0.45;
+    add(g, tm, i*6, 3.5, -8.2);
+  }
+  // Overhang flat piece
+  const oh = box(40, 0.3, 7, M.timberDark);
+  add(g, oh, 0, 3.9, -5.5);
+
+  // Open stall bays — timber louvre panels
+  for(let i=-2;i<=2;i++) {
+    const bay = box(5.5, 2.9, 0.28, M.timberDark);
+    bay.material = new THREE.MeshStandardMaterial({ color:0x6b3808, roughness:0.85, transparent:true, opacity:0.82 });
+    add(g, bay, i*7, 2.0, -7.2);
+  }
+
+  // Stable block 2 — behind, parallel
+  const sb2 = sb1.clone();
+  add(g, sb2, 0, 1.95, 20);
+
+  // Cobblestone courtyard
+  const yard = plane(55, 20, M.cobble);
+  add(g, yard, 0, 0.02, -14);
+
+  // Bollard lights
+  const boltMat = new THREE.MeshStandardMaterial({ color:0x888888, roughness:0.3, metalness:0.7 });
+  [-18,-6,6,18].forEach(x => {
+    const bolt = cyl(0.09, 0.12, 1.1, boltMat, 8);
+    add(g, bolt, x, 0.55, -12.5);
+    // Warm light point
+    const pl = new THREE.PointLight(0xffcc60, 0.8, 10);
+    add(g, pl, x, 1.4, -12);
+  });
+
+  // Lush tropical plants (from render — bushy low shrubs)
+  const shrubMat = new THREE.MeshStandardMaterial({ color:0x1a6010, roughness:0.94 });
+  [-16,-8,0,8,16].forEach(x => {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.85+Math.random()*0.5, 8, 6), shrubMat);
+    s.castShadow = true;
+    s.scale.y = 0.65;
+    add(g, s, x, 0.55, -8.5);
+  });
+
+  // Click
+  sb1.userData = { zone:'stables', lbl:'Equestrian', name:'Horse Stables',
+    desc:'4 blocks · 56 stalls · Red laterite brick · Exposed timber trusses · Terracotta tiled roof · Cobblestone courtyard' };
+  clickables.push(sb1);
+
+  g.position.set(-168, 0, 140);
+  scene.add(g);
+}
+
+/* ═══════════════════════════════════════════════
+   CRESCENT VILLAS — north arc
+═══════════════════════════════════════════════ */
+function buildCrescent() {
+  [[-55,-228],[-38,-238],[-20,-244],[-3,-246],[14,-246],[31,-244],[48,-238],[63,-230]].forEach(([x,z]) => {
+    const g = grp();
+    const body = box(8.5, 7.5, 9, M.concrete);
+    add(g, body, 0, 3.75, 0);
+    body.castShadow = true;
+    const tp = box(5, 5.5, 0.28, M.timber);
+    add(g, tp, 0, 4.5, -4.65);
+    const rf = box(9.5, 0.5, 10, M.cream);
+    add(g, rf, 0, 7.55, 0);
+    // Glass balcony
+    const gg = box(7, 3.0, 0.2, M.glass);
+    add(g, gg, 0, 4.2, -4.65);
+
+    body.userData = { zone:'crescent', lbl:'Residential', name:'Crescent Villa',
+      desc:'Northern arc · Lake and polo field views · Premium crescent position' };
+    clickables.push(body);
+
+    g.position.set(x, 0, z);
+    scene.add(g);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   TRAINING FIELD
+═══════════════════════════════════════════════ */
+function buildTraining() {
+  const surround = plane(122, 188, M.laterite);
+  surround.position.set(-188, 0.005, -55);
+  scene.add(surround);
+  const grass = plane(100, 165, M.grass);
+  grass.position.set(-188, 0.01, -55);
+  scene.add(grass);
+  grass.userData = { zone:'training', lbl:'Equestrian', name:'Training Field',
+    desc:'Polo academy · 5,000 sqm · Practice zones · Adjacent to stables' };
+  clickables.push(grass);
+}
+
+/* ═══════════════════════════════════════════════
+   TROPICAL TREES — procedural
+═══════════════════════════════════════════════ */
+function buildTrees() {
+  // Canopy LOD materials
+  const cm = [
+    new THREE.MeshStandardMaterial({ color:0x1a6018, roughness:0.94 }),
+    new THREE.MeshStandardMaterial({ color:0x156214, roughness:0.94 }),
+    new THREE.MeshStandardMaterial({ color:0x207022, roughness:0.94 }),
+  ];
+
+  function tree(x, z) {
+    const g = grp();
+    const h = 9 + Math.random()*7;
+    const r = 3.0 + Math.random()*2.2;
+    // Trunk — tapered
+    const trunk = cyl(0.32, 0.45, h*0.48, M.trunkM, 7);
+    add(g, trunk, 0, h*0.24, 0);
+    // 3 canopy tiers
+    [[0, r, h*0.6],[h*0.3, r*0.72, h*0.5],[h*0.52, r*0.48, h*0.42]].forEach(([yo, rc, hc]) => {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(rc, hc, 8), cm[Math.floor(Math.random()*3)]);
+      cone.castShadow = true;
+      add(g, cone, 0, h*0.48 + yo, 0);
+    });
+    g.position.set(x, 0, z);
+    scene.add(g);
+  }
+
+  // South perimeter
+  for(let x=-220;x<=220;x+=11) tree(x+(Math.random()-0.5)*4, 240+Math.random()*10);
+  // North perimeter
+  for(let x=-220;x<=220;x+=11) tree(x+(Math.random()-0.5)*4, -272+Math.random()*10);
+  // West perimeter
+  for(let z=-270;z<=240;z+=12) tree(-205+Math.random()*10, z+(Math.random()-0.5)*4);
+  // East perimeter
+  for(let z=-270;z<=240;z+=12) tree(198+Math.random()*10, z+(Math.random()-0.5)*4);
+
+  // Palms flanking clubhouse (from render — tall, leaning slightly)
+  function palm(x, z) {
+    const g = grp();
+    const h = 13 + Math.random()*4;
+    const trunk = cyl(0.28, 0.38, h, new THREE.MeshStandardMaterial({ color:0x7a5022, roughness:0.92 }), 8);
+    // Slight lean
+    trunk.rotation.z = (Math.random()-0.5)*0.1;
+    add(g, trunk, 0, h/2, 0);
+    // Frond spray — 7 drooping planes
+    const fm = new THREE.MeshStandardMaterial({ color:0x2a8020, roughness:0.9, side:THREE.DoubleSide });
+    for(let i=0;i<7;i++) {
+      const ang = (i/7)*Math.PI*2;
+      const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 4.8), fm);
+      frond.castShadow = true;
+      frond.position.set(Math.sin(ang)*2.2, h+0.5, Math.cos(ang)*2.2);
+      frond.rotation.set(-0.6, ang, 0.2);
+      g.add(frond);
+    }
+    g.position.set(x, 0, z);
+    scene.add(g);
+  }
+  [-46,-34,34,46].forEach(x => palm(x, 172));
+  [[-148,118],[-162,130],[-154,158],[-172,148]].forEach(([x,z]) => palm(x,z));
+
+  // Tropical shrubs along paths — small spheres
+  const shMat = new THREE.MeshStandardMaterial({ color:0x1a7012, roughness:0.94 });
+  for(let i=0;i<60;i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.7+Math.random()*0.8,7,5), shMat);
+    s.castShadow = true; s.scale.y = 0.55;
+    const x = (Math.random()-0.5)*300, z = (Math.random()-0.5)*320;
+    // Only place outside the field area
+    if(Math.abs(x) < 100 && Math.abs(z) < 160) continue;
+    s.position.set(x, 0.4, z);
+    scene.add(s);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   SOUTH ROAD — Lagos road
+═══════════════════════════════════════════════ */
+const road = plane(500, 20, new THREE.MeshStandardMaterial({ color:0x333333, roughness:0.88 }));
+road.position.set(0, 0.01, 220);
+scene.add(road);
+
+/* ═══════════════════════════════════════════════
+   RAYCASTER — click interaction
+═══════════════════════════════════════════════ */
+const clickables = [];
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+window.addEventListener('click', e => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(clickables, false);
+  if(hits.length > 0) {
+    const d = hits[0].object.userData;
+    if(d.name) showInfo(d.lbl, d.name, d.desc);
+  }
+});
+
+function showInfo(lbl, name, desc) {
+  document.getElementById('zl').textContent = lbl;
+  document.getElementById('zn').textContent = name;
+  document.getElementById('zd').textContent = desc;
   const zi = document.getElementById('zi');
-  zi.classList.add('show');
+  zi.classList.add('on');
   clearTimeout(zi._t);
-  zi._t = setTimeout(() => zi.classList.remove('show'), 5500);
+  zi._t = setTimeout(() => zi.classList.remove('on'), 5500);
 }
 
+/* ═══════════════════════════════════════════════
+   CAMERA CONTROLS — smooth orbit + look
+═══════════════════════════════════════════════ */
+const VIEWPOINTS = [
+  { pos:[0,   1.65,  0],   lookAt:[0,  1.65, -80],  label:'Centre Field' },   // 0
+  { pos:[0,   3.5,  165],  lookAt:[0,  3.5, 110],   label:'Clubhouse End' },   // 1
+  { pos:[-76, 1.65, -40],  lookAt:[0,  1.65, -40],  label:'Pony Line' },       // 2
+  { pos:[0,   1.65,-155],  lookAt:[0,  2.5, -80],   label:'Lake End' },        // 3
+  { pos:[-94, 2.5,   0],   lookAt:[-30,2.5,   0],   label:'Villa West' },      // 4
+  { pos:[-150,1.65, 118],  lookAt:[-130,1.65,138],  label:'Stables Yard' },    // 5
+];
+
+let curVP = 0;
+let targetPos = new THREE.Vector3(0, 1.65, 0);
+let targetLook = new THREE.Vector3(0, 1.65, -80);
+let camPos = new THREE.Vector3(0, 1.65, 0);
+
+// Mouse look state
+let isPointerDown = false;
+let lastX = 0, lastY = 0;
+let yaw = Math.PI, pitch = 0;
+const MAX_PITCH = Math.PI / 3;
+
+// Derive initial yaw/pitch from first viewpoint
+function setVP(idx) {
+  curVP = idx;
+  const vp = VIEWPOINTS[idx];
+  targetPos.set(...vp.pos);
+  targetLook.set(...vp.lookAt);
+  // Update buttons
+  document.querySelectorAll('.vpb').forEach((b,i) => b.classList.toggle('on', i===idx));
+  // Show context
+  const infos = [
+    { lbl:'Main Field',  name:'International Polo Field',   desc:'FIP-standard · 275m × 145m · Red laterite pony track · 30, 40 and 60-yard markings' },
+    { lbl:'Hospitality', name:'Clubhouse & Pavilion',       desc:'3-floor luxury clubhouse · 3,419 sqm · Tiered spectator stands overlooking the field' },
+    { lbl:'Equestrian',  name:'Pony Line',                  desc:'The red laterite clay surround · 18m wide on all four sides · Where horses turn at the boundary' },
+    { lbl:'Feature',     name:'Proposed Lake',              desc:'Ornamental crescent lake · Natural boundary between polo field and northern crescent villas' },
+    { lbl:'Residential', name:'Premium Villas — West',      desc:'14 polo-view villas · 330 sqm each · Blonde timber louvres · Glass balustrades · Undercroft parking' },
+    { lbl:'Equestrian',  name:'Horse Stables',              desc:'4 blocks · 56 stalls · Red laterite brick · Exposed timber trusses · Terracotta roof · Cobblestone yard' },
+  ];
+  showInfo(infos[idx].lbl, infos[idx].name, infos[idx].desc);
+  dismiss();
+}
+
+function goVP(idx) { setVP(idx); }
+window.goVP = goVP;
+
+// Pointer events — mouse look
+const cvs = document.getElementById('c');
+cvs.addEventListener('mousedown', e => { isPointerDown=true; lastX=e.clientX; lastY=e.clientY; dismiss(); });
+window.addEventListener('mouseup', () => isPointerDown=false);
+window.addEventListener('mousemove', e => {
+  if(!isPointerDown) return;
+  const dx = e.clientX - lastX;
+  const dy = e.clientY - lastY;
+  yaw   -= dx * 0.003;
+  pitch -= dy * 0.003;
+  pitch  = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+  lastX = e.clientX; lastY = e.clientY;
+});
+
+// Touch
+cvs.addEventListener('touchstart', e => { isPointerDown=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; dismiss(); }, {passive:true});
+cvs.addEventListener('touchend',   () => isPointerDown=false);
+cvs.addEventListener('touchmove',  e => {
+  if(!isPointerDown) return;
+  const dx = e.touches[0].clientX - lastX;
+  const dy = e.touches[0].clientY - lastY;
+  yaw -= dx * 0.004;
+  pitch -= dy * 0.004;
+  pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+  lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+}, {passive:true});
+
+// Gyroscope for mobile
+if(window.DeviceOrientationEvent) {
+  let gyroCal = null;
+  window.addEventListener('deviceorientation', e => {
+    if(!gyroCal && e.gamma!=null) gyroCal={b:e.beta,g:e.gamma};
+    if(gyroCal && e.gamma!=null) {
+      yaw = -(e.gamma - gyroCal.g) * 0.018 + Math.PI;
+      pitch = -(e.beta - gyroCal.b) * 0.014;
+      pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+    }
+  });
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight') goVP((curVP+1)%VIEWPOINTS.length);
+  if(e.key==='ArrowLeft')  goVP((curVP-1+VIEWPOINTS.length)%VIEWPOINTS.length);
+  if(e.key==='Escape')     window.location.href = 'index.html';
+  dismiss();
+});
+
+// Set initial yaw from first viewpoint
+{
+  const vp = VIEWPOINTS[0];
+  const dir = new THREE.Vector3(...vp.lookAt).sub(new THREE.Vector3(...vp.pos));
+  yaw = Math.atan2(dir.x, dir.z);
+  pitch = 0;
+}
+
+let hinted = false;
 function dismiss() {
-  if (hinted) return;
-  hinted = true;
+  if(hinted) return; hinted=true;
   document.getElementById('hint').classList.add('gone');
 }
 
-/* ── Clickable zone interaction ── */
-function setupClicks() {
-  document.querySelectorAll('.clickable').forEach(el => {
-    el.addEventListener('click', function() {
-      const zone = this.getAttribute('data-zone') || this.closest('[data-zone]')?.getAttribute('data-zone');
-      const lbl  = this.getAttribute('data-lbl');
-      const name = this.getAttribute('data-name');
-      const desc = this.getAttribute('data-desc');
-      if (name) showInfo({ lbl: lbl||'Zone', name, desc });
+/* ═══════════════════════════════════════════════
+   RENDER LOOP
+═══════════════════════════════════════════════ */
+const clock = new THREE.Clock();
+// Camera look direction computed from yaw/pitch
+const lookDir = new THREE.Vector3();
+const camRight = new THREE.Vector3();
 
-      // Hover glow — brief gold emissive
-      this.setAttribute('material', 'emissive', '#C9A84C');
-      this.setAttribute('material', 'emissiveIntensity', '0.12');
-      setTimeout(() => {
-        this.setAttribute('material', 'emissive', '#000000');
-        this.setAttribute('material', 'emissiveIntensity', '0');
-      }, 700);
-      dismiss();
-    });
-  });
-}
+let transitioning = false;
+let transT = 1;
+let transStart = new THREE.Vector3();
+let transEnd = new THREE.Vector3();
 
-/* ── Build villas procedurally ── */
-function buildVillas() {
-  const scene = document.querySelector('a-scene');
+function updateVPTransition() {
+  // Smoothly move camera to target position
+  camPos.lerp(targetPos, 0.055);
+  camera.position.copy(camPos);
 
-  function makeVilla(parentEl, px, pz, flip) {
-    const g = document.createElement('a-entity');
-    g.setAttribute('position', `${px} 0 ${pz}`);
-    g.setAttribute('class', 'clickable');
-    g.setAttribute('data-lbl', 'Residential');
-    g.setAttribute('data-name', flip ? 'Premium Villa — East' : 'Premium Villa — West');
-    g.setAttribute('data-desc', '3-bed polo-view villa · 330 sqm · Timber louvre screens · Glass balustrades · Undercroft parking');
+  // Compute look target from yaw/pitch (free look)
+  lookDir.set(
+    Math.sin(yaw) * Math.cos(pitch),
+    Math.sin(pitch),
+    Math.cos(yaw) * Math.cos(pitch)
+  );
+  camera.lookAt(camera.position.clone().add(lookDir));
 
-    const faceZ = flip ? 1 : -1; // east villas face west (-x), west villas face east (+x)
-
-    // Undercroft / piloti base — concrete grey
-    const base = document.createElement('a-box');
-    base.setAttribute('position', `0 1.2 0`);
-    base.setAttribute('width', '10'); base.setAttribute('height', '2.4'); base.setAttribute('depth', '10');
-    base.setAttribute('material', 'color:#b0aba2;roughness:0.85;cast-shadow:true');
-    g.appendChild(base);
-
-    // Floor 0 carport opening (darker)
-    const port = document.createElement('a-box');
-    port.setAttribute('position', `0 0.9 ${faceZ * -4.5}`);
-    port.setAttribute('width', '7'); port.setAttribute('height', '1.8'); port.setAttribute('depth', '0.25');
-    port.setAttribute('material', 'color:#222;opacity:0.7;transparent:true;shader:flat');
-    g.appendChild(port);
-
-    // Slab between ground and floor 1
-    const slab0 = document.createElement('a-box');
-    slab0.setAttribute('position', `0 2.55 0`);
-    slab0.setAttribute('width', '11'); slab0.setAttribute('height', '0.45'); slab0.setAttribute('depth', '11');
-    slab0.setAttribute('material', 'color:#c8c3ba;roughness:0.7');
-    g.appendChild(slab0);
-
-    // Floor 1 — white/grey concrete body
-    const f1 = document.createElement('a-box');
-    f1.setAttribute('position', `0 5.5 0`);
-    f1.setAttribute('width', '10'); f1.setAttribute('height', '5.5'); f1.setAttribute('depth', '10');
-    f1.setAttribute('material', 'color:#d4d0c8;roughness:0.7;cast-shadow:true');
-    g.appendChild(f1);
-
-    // Floor 1 — timber louvre panel (left half of facade)
-    const slat1 = document.createElement('a-box');
-    slat1.setAttribute('position', `-2.5 5.5 ${faceZ * -5.1}`);
-    slat1.setAttribute('width', '4'); slat1.setAttribute('height', '4.5'); slat1.setAttribute('depth', '0.3');
-    slat1.setAttribute('material', 'color:#c89040;roughness:0.78');
-    g.appendChild(slat1);
-
-    // Floor 1 — glazing right half
-    const glz1 = document.createElement('a-box');
-    glz1.setAttribute('position', `2.5 5.5 ${faceZ * -5.15}`);
-    glz1.setAttribute('width', '4'); glz1.setAttribute('height', '3.8'); glz1.setAttribute('depth', '0.2');
-    glz1.setAttribute('material', 'color:#7ab8d4;opacity:0.55;transparent:true;metalness:0.65;roughness:0.05');
-    g.appendChild(glz1);
-
-    // Floor 1 — glass balustrade
-    const rail1 = document.createElement('a-box');
-    rail1.setAttribute('position', `0 3.0 ${faceZ * -5.2}`);
-    rail1.setAttribute('width', '9'); rail1.setAttribute('height', '0.9'); rail1.setAttribute('depth', '0.15');
-    rail1.setAttribute('material', 'color:#aaddee;opacity:0.35;transparent:true;metalness:0.6;roughness:0.05');
-    g.appendChild(rail1);
-
-    // Slab between F1 and F2
-    const slab1 = document.createElement('a-box');
-    slab1.setAttribute('position', `0 8.35 0`);
-    slab1.setAttribute('width', '11.5'); slab1.setAttribute('height', '0.45'); slab1.setAttribute('depth', '11.5');
-    slab1.setAttribute('material', 'color:#c8c3ba;roughness:0.7');
-    g.appendChild(slab1);
-
-    // Floor 2 — timber louvre full facade + glazing
-    const f2 = document.createElement('a-box');
-    f2.setAttribute('position', `0 11.2 0`);
-    f2.setAttribute('width', '10'); f2.setAttribute('height', '5.5'); f2.setAttribute('depth', '10');
-    f2.setAttribute('material', 'color:#d4d0c8;roughness:0.7');
-    g.appendChild(f2);
-
-    // Floor 2 timber panel — full width
-    const slat2 = document.createElement('a-box');
-    slat2.setAttribute('position', `0 11.2 ${faceZ * -5.1}`);
-    slat2.setAttribute('width', '8'); slat2.setAttribute('height', '4.5'); slat2.setAttribute('depth', '0.3');
-    slat2.setAttribute('material', 'color:#c89040;roughness:0.78');
-    g.appendChild(slat2);
-
-    // Floor 2 glass
-    const glz2 = document.createElement('a-box');
-    glz2.setAttribute('position', `0 11.4 ${faceZ * -5.15}`);
-    glz2.setAttribute('width', '8'); glz2.setAttribute('height', '3.2'); glz2.setAttribute('depth', '0.2');
-    glz2.setAttribute('material', 'color:#7ab8d4;opacity:0.55;transparent:true;metalness:0.65;roughness:0.05');
-    g.appendChild(glz2);
-
-    // Flat roof slab
-    const roof = document.createElement('a-box');
-    roof.setAttribute('position', `0 14.3 0`);
-    roof.setAttribute('width', '11'); roof.setAttribute('height', '0.5'); roof.setAttribute('depth', '11');
-    roof.setAttribute('material', 'color:#c4bfb8;roughness:0.7');
-    g.appendChild(roof);
-
-    parentEl.appendChild(g);
-  }
-
-  // West villas: x = -102, z from -78 to +78 step 12, face east (faceDir = false)
-  const wParent = document.querySelector('#villas-w > a-entity');
-  for (let i = 0; i < 14; i++) {
-    makeVilla(wParent, 0, -78 + i * 12, false);
-  }
-
-  // East villas: x = +102, z from -78 to +78 step 12, face west (flip = true)
-  const eParent = document.querySelector('#villas-e > a-entity');
-  for (let i = 0; i < 14; i++) {
-    makeVilla(eParent, 0, -78 + i * 12, true);
+  // When VP changes, smoothly orient yaw toward the preset look
+  if(!isPointerDown) {
+    const vp = VIEWPOINTS[curVP];
+    const tgt = new THREE.Vector3(...vp.lookAt).sub(new THREE.Vector3(...vp.pos));
+    const tYaw = Math.atan2(tgt.x, tgt.z);
+    // Only nudge if no manual input recently
+    // (handled by not lerping yaw — free look is intentional)
   }
 }
 
-/* ── Build crescent villas ── */
-function buildCrescent() {
-  const parent = document.getElementById('crescent');
-  const positions = [
-    [-55,-228], [-40,-238], [-24,-244], [-8,-246],
-    [8,-246],   [24,-244],  [40,-238],  [55,-228],
+function animate() {
+  requestAnimationFrame(animate);
+  updateVPTransition();
+  renderer.render(scene, camera);
+}
+
+/* ═══════════════════════════════════════════════
+   BUILD EVERYTHING
+═══════════════════════════════════════════════ */
+function build() {
+  const progress = document.getElementById('lp');
+  const steps = [
+    [() => { buildClubhouse(); }, 20, 'Clubhouse'],
+    [() => { buildVillas(); },    45, 'Villas'],
+    [() => { buildApartments(); },60, 'Apartments'],
+    [() => { buildStables(); },   72, 'Stables'],
+    [() => { buildCrescent(); },  80, 'Crescent'],
+    [() => { buildTraining(); },  86, 'Training field'],
+    [() => { buildTrees(); },     98, 'Landscape'],
   ];
-  positions.forEach(([x, z]) => {
-    // Simple 2-storey cream villa
-    const g = document.createElement('a-entity');
-    g.setAttribute('position', `${x} 0 ${z}`);
-    g.setAttribute('class', 'clickable');
-    g.setAttribute('data-lbl', 'Residential');
-    g.setAttribute('data-name', 'Crescent Villa');
-    g.setAttribute('data-desc', 'Northern crescent · Lake and polo field views · Premium arc position');
 
-    const body = document.createElement('a-box');
-    body.setAttribute('position', '0 3.5 0');
-    body.setAttribute('width', '8'); body.setAttribute('height', '7'); body.setAttribute('depth', '9');
-    body.setAttribute('material', 'color:#d8d4cc;roughness:0.75;cast-shadow:true');
-    g.appendChild(body);
-
-    const timber = document.createElement('a-box');
-    timber.setAttribute('position', '0 4.5 -4.6');
-    timber.setAttribute('width', '5'); timber.setAttribute('height', '4'); timber.setAttribute('depth', '0.25');
-    timber.setAttribute('material', 'color:#c08030;roughness:0.78');
-    g.appendChild(timber);
-
-    const roof = document.createElement('a-box');
-    roof.setAttribute('position', '0 7.3 0');
-    roof.setAttribute('width', '9'); roof.setAttribute('height', '0.4'); roof.setAttribute('depth', '10');
-    roof.setAttribute('material', 'color:#c8c3ba;roughness:0.7');
-    g.appendChild(roof);
-
-    parent.appendChild(g);
-  });
-}
-
-/* ── Procedural trees ── */
-function buildTrees() {
-  const TRUNK = '#5a3510';
-
-  function tree(parent, x, z) {
-    const h = 9 + Math.random() * 7;
-    const r = 3.2 + Math.random() * 2;
-
-    const g = document.createElement('a-entity');
-    g.setAttribute('position', `${x} 0 ${z}`);
-
-    // Trunk
-    const trunk = document.createElement('a-cylinder');
-    trunk.setAttribute('position', `0 ${h * 0.22} 0`);
-    trunk.setAttribute('radius', '0.4');
-    trunk.setAttribute('height', `${h * 0.44}`);
-    trunk.setAttribute('material', `color:${TRUNK};roughness:0.95`);
-    g.appendChild(trunk);
-
-    // 3-tier canopy for tropical fullness
-    [[0, 1.0, r], [h*0.28, 0.75, r*0.8], [h*0.48, 0.55, r*0.55]].forEach(([yo, hs, rc]) => {
-      const cone = document.createElement('a-cone');
-      cone.setAttribute('position', `0 ${h * 0.45 + yo} 0`);
-      cone.setAttribute('radius-bottom', `${rc}`);
-      cone.setAttribute('radius-top', '0.15');
-      cone.setAttribute('height', `${h * hs * 0.55}`);
-      cone.setAttribute('segments-radial', '8');
-      const green = Math.floor(90 + Math.random() * 28);
-      cone.setAttribute('material', `color:rgb(18,${green},18);roughness:0.95`);
-      g.appendChild(cone);
-    });
-
-    parent.appendChild(g);
+  let i = 0;
+  function next() {
+    if(i >= steps.length) {
+      progress.style.width = '100%';
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('out');
+        document.getElementById('nav').classList.add('show');
+        document.getElementById('vp').classList.add('show');
+        document.getElementById('qbadge').classList.add('show');
+        setTimeout(() => document.getElementById('loader').remove(), 1000);
+        setVP(0);
+        animate();
+      }, 400);
+      return;
+    }
+    const [fn, pct] = steps[i++];
+    fn();
+    progress.style.width = pct + '%';
+    setTimeout(next, 60);
   }
-
-  const ts = document.getElementById('trees-s');
-  const tn = document.getElementById('trees-n');
-  const tw = document.getElementById('trees-w');
-  const te = document.getElementById('trees-e');
-
-  // South
-  for (let x = -220; x <= 220; x += 12) tree(ts, x + (Math.random()-0.5)*4, 232 + Math.random()*10);
-  // North
-  for (let x = -220; x <= 220; x += 11) tree(tn, x + (Math.random()-0.5)*4, -268 + Math.random()*10);
-  // West
-  for (let z = -265; z <= 230; z += 12) tree(tw, -200 + Math.random()*10, z + (Math.random()-0.5)*4);
-  // East
-  for (let z = -265; z <= 230; z += 12) tree(te, 195 + Math.random()*10, z + (Math.random()-0.5)*4);
-
-  // Palms flanking clubhouse (from render)
-  [-46,-34,34,46].forEach(x => {
-    const g = document.createElement('a-entity');
-    g.setAttribute('position', `${x} 0 178`);
-    const trunk = document.createElement('a-cylinder');
-    trunk.setAttribute('position', '0 7 0'); trunk.setAttribute('radius', '0.3');
-    trunk.setAttribute('height', '14'); trunk.setAttribute('material', 'color:#7a5520;roughness:0.9');
-    // Slight lean
-    trunk.setAttribute('rotation', `${(Math.random()-0.5)*8} 0 ${(Math.random()-0.5)*6}`);
-    g.appendChild(trunk);
-    // Palm frond burst — 6 drooping planes
-    for (let i = 0; i < 6; i++) {
-      const frond = document.createElement('a-plane');
-      const ang = i * 60;
-      frond.setAttribute('position', `${Math.sin(ang*Math.PI/180)*2.5} 14 ${Math.cos(ang*Math.PI/180)*2.5}`);
-      frond.setAttribute('rotation', `${-35 + Math.random()*15} ${ang} 0`);
-      frond.setAttribute('width', '0.5'); frond.setAttribute('height', '4.5');
-      frond.setAttribute('material', 'color:#2a7a1a;roughness:0.9;side:double');
-      g.appendChild(frond);
-    }
-    document.querySelector('a-scene').appendChild(g);
-  });
-
-  // Palms near stables (from render)
-  [[-148,118],[-162,128],[-155,158],[-172,148]].forEach(([x,z]) => {
-    const g = document.createElement('a-entity');
-    g.setAttribute('position', `${x} 0 ${z}`);
-    const h = 11 + Math.random()*4;
-    const tr = document.createElement('a-cylinder');
-    tr.setAttribute('position', `0 ${h/2} 0`); tr.setAttribute('radius', '0.32');
-    tr.setAttribute('height', `${h}`); tr.setAttribute('material', 'color:#7a5520;roughness:0.9');
-    g.appendChild(tr);
-    for (let i = 0; i < 6; i++) {
-      const ang = i * 60;
-      const frond = document.createElement('a-plane');
-      frond.setAttribute('position', `${Math.sin(ang*Math.PI/180)*2} ${h} ${Math.cos(ang*Math.PI/180)*2}`);
-      frond.setAttribute('rotation', `${-30} ${ang} 0`);
-      frond.setAttribute('width', '0.5'); frond.setAttribute('height', '4');
-      frond.setAttribute('material', 'color:#2a7a1a;roughness:0.9;side:double');
-      g.appendChild(frond);
-    }
-    document.querySelector('a-scene').appendChild(g);
-  });
+  next();
 }
 
-/* ── Keyboard ── */
-document.addEventListener('keydown', e => {
-  const order = ['centre','clubhouse','lake','villa-w','villa-e','stables'];
-  const i = order.indexOf(cur);
-  if (e.key==='ArrowRight') go(order[(i+1)%order.length]);
-  if (e.key==='ArrowLeft')  go(order[(i-1+order.length)%order.length]);
-  if (e.key==='Escape')     window.location.href = 'index.html';
-  dismiss();
-});
-
-/* ── Scene loaded ── */
-document.querySelector('a-scene').addEventListener('loaded', () => {
-  buildVillas();
-  buildCrescent();
-  buildTrees();
-  setupClicks();
-
-  setTimeout(() => {
-    document.getElementById('loader').classList.add('fade');
-    document.getElementById('top-nav').classList.add('show');
-    document.getElementById('vp').classList.add('show');
-    setTimeout(() => document.getElementById('loader').remove(), 900);
-  }, 900);
-
-  setTimeout(dismiss, 8000);
-});
+build();
 </script>
 </body>
 </html>
