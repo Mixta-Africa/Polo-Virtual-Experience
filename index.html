@@ -1207,6 +1207,23 @@ function enterZone(zoneId) {
   const zone = ZONES[zoneId];
   const origin = zone.flyOrigin;
 
+  // Polo field opens the dedicated 3D A-Frame scene
+  if (zoneId === 'polo-field') {
+    // Quick fly-in then navigate
+    const mapContainer = document.getElementById('map-container');
+    mapContainer.style.transformOrigin = `${origin.x}% ${origin.y}%`;
+    mapContainer.style.transition = 'transform .55s cubic-bezier(.4,0,.2,1)';
+    mapContainer.style.transform = 'scale(2.8)';
+    const overlay = document.getElementById('fly-overlay');
+    setTimeout(() => overlay.classList.add('active'), 300);
+    setTimeout(() => {
+      mapContainer.style.transform = '';
+      mapContainer.style.transition = '';
+      window.location.href = 'polo-field.html';
+    }, 750);
+    return;
+  }
+
   /* 1. Zoom map toward clicked zone */
   const mapContainer = document.getElementById('map-container');
   mapContainer.style.transformOrigin = `${origin.x}% ${origin.y}%`;
