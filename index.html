@@ -7,8 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
-<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+<!-- Pannellum removed — using custom immersive parallax viewer -->
 <style>
   /* ── Reset & base ─────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -286,9 +285,7 @@
     z-index: 20;
     background: var(--black);
   }
-  #pannellum-container {
-    position: absolute; inset: 0;
-  }
+  /* Immersive viewer fills screen-pano */
 
   /* Pano nav bar */
   .pano-nav {
@@ -429,36 +426,184 @@
   }
   .zone-dot:hover .zone-dot-tip { opacity: 1; }
 
-  /* Pannellum overrides */
-  .pnlm-load-box { display: none !important; }
-  .pnlm-ui { display: none !important; }
+  /* ── Immersive viewer ─────────────────────────────── */
+  #immersive-viewer {
+    position: absolute; inset: 0;
+    overflow: hidden;
+    background: #0a0f08;
+    user-select: none;
+  }
 
-  /* Placeholder panorama canvas (shown while real panos load) */
-  .pano-placeholder {
+  /* Parallax stage — slightly oversized so dragging reveals edges */
+  #parallax-stage {
+    position: absolute;
+    /* 8% larger than viewport on each axis for parallax travel */
+    inset: -8%;
+    width: 116%; height: 116%;
+    cursor: grab;
+    transition: transform .05s linear;
+  }
+  #parallax-stage:active { cursor: grabbing; }
+  #parallax-stage.transitioning { cursor: default; pointer-events: none; }
+
+  #parallax-img-wrap {
+    position: absolute; inset: 0;
+  }
+  #parallax-img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center;
+    pointer-events: none;
+    transition: opacity .6s ease;
+  }
+  #parallax-img.loading { opacity: 0; }
+
+  /* Cinematic vignette — darkens edges for depth */
+  #parallax-vignette {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 50%,
+      transparent 40%,
+      rgba(5,10,5,.55) 100%
+    );
+  }
+
+  /* Transition fade overlay */
+  #parallax-fade {
+    position: absolute; inset: 0;
+    background: #0a0f08;
+    opacity: 0; pointer-events: none;
+    transition: opacity .35s ease;
+    z-index: 5;
+  }
+  #parallax-fade.active { opacity: 1; }
+
+  /* ── Compass ──────────────────────────────────────── */
+  #compass {
+    position: fixed; top: 82px; right: 20px;
+    width: 52px; height: 52px;
+    z-index: 60; pointer-events: none;
+    opacity: .9;
+    transition: transform .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  #compass svg { width: 52px; height: 52px; }
+  #compass-needle {
+    transform-origin: 26px 26px;
+    transition: transform .5s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  /* ── Drag hint ────────────────────────────────────── */
+  #drag-hint {
+    position: fixed;
+    bottom: 130px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(28,58,42,.78);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(201,168,76,.2);
+    border-radius: 40px;
+    padding: 9px 18px;
+    font-size: 12px; font-weight: 400;
+    letter-spacing: .05em;
+    color: rgba(245,240,232,.65);
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity .5s ease;
+  }
+  #drag-hint svg { stroke: var(--gold); }
+  #drag-hint.hidden { opacity: 0; }
+
+  /* ── Viewpoint selector strip ─────────────────────── */
+  #viewpoint-strip {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 70;
+    background: rgba(10,15,8,.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(201,168,76,.18);
+    padding: 14px 20px 20px;
+  }
+  /* Push drawer above strip */
+  .zone-drawer { bottom: 96px !important; }
+
+  #viewpoint-strip-label {
+    font-size: 9px; font-weight: 500;
+    letter-spacing: .2em; text-transform: uppercase;
+    color: rgba(245,240,232,.3);
+    margin-bottom: 10px;
+  }
+  #viewpoint-strip-inner {
+    display: flex; gap: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  #viewpoint-strip-inner::-webkit-scrollbar { display: none; }
+
+  /* Individual viewpoint button */
+  .vp-btn {
+    flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; cursor: pointer;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 8px;
+    padding: 8px 10px;
+    transition: all .2s ease;
+    min-width: 90px;
+  }
+  .vp-btn:hover { background: rgba(255,255,255,.1); border-color: rgba(201,168,76,.4); }
+  .vp-btn.active {
+    background: rgba(201,168,76,.12);
+    border-color: #C9A84C;
+  }
+  .vp-thumb {
+    width: 72px; height: 44px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #1C3A2A;
+    flex-shrink: 0;
+  }
+  .vp-thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: .8;
+    transition: opacity .2s;
+  }
+  .vp-btn:hover .vp-thumb img,
+  .vp-btn.active .vp-thumb img { opacity: 1; }
+  .vp-name {
+    font-size: 10px; font-weight: 500;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: rgba(245,240,232,.5);
+    text-align: center; line-height: 1.3;
+  }
+  .vp-btn.active .vp-name { color: #C9A84C; }
+  .vp-dir {
+    font-size: 9px; color: rgba(245,240,232,.28);
+    letter-spacing: .04em;
+    text-align: center;
+  }
+
+  /* ── Gradient placeholder (zones with no viewpoints yet) ── */
+  #gradient-placeholder {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    z-index: 1;
+    z-index: 2;
   }
-  .pano-placeholder-label {
+  #gp-label {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 36px; font-weight: 300; font-style: italic;
-    color: rgba(255,255,255,.2);
-    letter-spacing: .06em;
-    margin-bottom: 12px;
+    font-size: 38px; font-weight: 300; font-style: italic;
+    color: rgba(255,255,255,.18);
+    letter-spacing: .06em; margin-bottom: 10px;
   }
-  .pano-placeholder-sub {
-    font-size: 11px; font-weight: 400;
-    letter-spacing: .18em; text-transform: uppercase;
-    color: rgba(255,255,255,.12);
-  }
-  .pano-placeholder-icon {
-    width: 56px; height: 56px;
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 20px;
-    color: rgba(255,255,255,.15);
+  #gp-sub {
+    font-size: 10px; font-weight: 400;
+    letter-spacing: .22em; text-transform: uppercase;
+    color: rgba(255,255,255,.1);
   }
 </style>
 </head>
@@ -540,158 +685,159 @@
       xmlns="http://www.w3.org/2000/svg">
 
       <!-- ── POLO FIELD ─────────────────────────────────────
-           The main green playing field + red laterite safety track.
-           Excludes the villa rings — just the field + track oval.
-           Calibrated to actual plan: x:360–920, y:178–598
+           Large rounded rect centre. Brown surround track included.
+           Approx x:310–880, y:165–620 on the plan.
       ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-polo-field"
         data-zone="polo-field"
-        points="360,178 920,178 920,598 360,598"
+        points="318,168 878,168 878,618 318,618"
         onclick="enterZone('polo-field')"/>
       <g class="zone-label-group" id="label-polo-field">
-        <rect x="502" y="366" width="220" height="58" rx="7"
+        <rect x="488" y="360" width="224" height="58" rx="7"
           fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
-        <text x="612" y="389" text-anchor="middle"
+        <text x="600" y="383" text-anchor="middle"
           font-family="Cormorant Garamond, serif" font-size="20" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Polo Field</text>
-        <text x="612" y="411" text-anchor="middle"
+        <text x="600" y="406" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
           fill="rgba(201,168,76,.85)" letter-spacing="2">40,000 SQM · INT'L STANDARD</text>
       </g>
 
+      <!-- ── PROPOSED LAKE ──────────────────────────────────
+           Blue arc shape, north of field.
+           Approx x:420–760, y:110–175.
+      ──────────────────────────────────────────────────────── -->
+      <!-- Lake is a visual feature, not a clickable zone — no polygon needed -->
+
       <!-- ── LOFT APARTMENTS — NORTH CRESCENT ──────────────
-           Full northern strip: loft apts + crescent villas row.
-           Runs the full width above the villa inner ring.
-           Calibrated: x:230–1175, y:18–148
+           Full top strip incl crescent villas row.
+           Approx x:215–1175, y:20–162.
       ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-loft-apts"
         data-zone="loft-apts"
-        points="230,18 1175,18 1175,148 230,148"
+        points="215,22 1175,22 1175,162 215,162"
         onclick="enterZone('loft-apts')"/>
       <g class="zone-label-group" id="label-loft-apts">
-        <rect x="536" y="56" width="196" height="56" rx="7"
+        <rect x="536" y="62" width="188" height="56" rx="7"
           fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
-        <text x="634" y="79" text-anchor="middle"
+        <text x="630" y="85" text-anchor="middle"
           font-family="Cormorant Garamond, serif" font-size="18" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Loft Apartments</text>
-        <text x="634" y="100" text-anchor="middle"
+        <text x="630" y="106" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
           fill="rgba(201,168,76,.85)" letter-spacing="2">NORTHERN CRESCENT · 96 UNITS</text>
       </g>
 
       <!-- ── PREMIUM VILLAS — WEST ──────────────────────────
-           West flank inner ring: villa rows on west long side.
-           Includes the western villa strip between loft apts and clubhouse.
-           Calibrated: x:230–358, y:148–608
+           Column left of field, incl loft apartment blocks west.
+           Approx x:215–314, y:162–622.
       ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-villa-west"
         data-zone="villa-west"
-        points="230,148 358,148 358,608 230,608"
+        points="215,162 314,162 314,622 215,622"
         onclick="enterZone('villa-west')"/>
       <g class="zone-label-group" id="label-villa-west">
-        <rect x="60" y="358" width="180" height="58" rx="7"
+        <rect x="100" y="355" width="176" height="58" rx="7"
           fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
-        <text x="150" y="381" text-anchor="middle"
+        <text x="188" y="378" text-anchor="middle"
           font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Premium Villas</text>
-        <text x="150" y="401" text-anchor="middle"
+        <text x="188" y="398" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.85)" letter-spacing="2">WEST · 3 BED POLO VIEW</text>
+          fill="rgba(201,168,76,.85)" letter-spacing="2">3 BED · POLO VIEW</text>
       </g>
 
       <!-- ── PREMIUM VILLAS — EAST ──────────────────────────
-           East flank inner ring: villa rows on east long side.
-           Calibrated: x:922–1050, y:148–608
+           Column right of field, incl loft blocks east.
+           Approx x:882–980, y:162–622.
       ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-villa-east"
         data-zone="villa-east"
-        points="922,148 1050,148 1050,608 922,608"
+        points="882,162 980,162 980,622 882,622"
         onclick="enterZone('villa-east')"/>
       <g class="zone-label-group" id="label-villa-east">
-        <rect x="1054" y="358" width="180" height="58" rx="7"
+        <rect x="984" y="355" width="176" height="58" rx="7"
           fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
-        <text x="1144" y="381" text-anchor="middle"
+        <text x="1072" y="378" text-anchor="middle"
           font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Premium Villas</text>
-        <text x="1144" y="401" text-anchor="middle"
+        <text x="1072" y="398" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
-          fill="rgba(201,168,76,.85)" letter-spacing="2">EAST · 3 BED LAKE VIEW</text>
+          fill="rgba(201,168,76,.85)" letter-spacing="2">3 BED · POLO VIEW</text>
       </g>
 
       <!-- ── CLUBHOUSE ───────────────────────────────────────
-           South centre strip — clubhouse building + immediate surround.
-           On the plan: centred south of polo field, between parking zones.
-           Calibrated: x:500–820, y:610–682
+           South centre, below polo field.
+           Approx x:430–770, y:625–690.
       ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-clubhouse"
         data-zone="clubhouse"
-        points="500,610 820,610 820,682 500,682"
+        points="430,625 770,625 770,690 430,690"
         onclick="enterZone('clubhouse')"/>
       <g class="zone-label-group" id="label-clubhouse">
-        <rect x="528" y="618" width="188" height="52" rx="7"
+        <rect x="490" y="630" width="180" height="52" rx="7"
           fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
-        <text x="622" y="641" text-anchor="middle"
+        <text x="580" y="653" text-anchor="middle"
           font-family="Cormorant Garamond, serif" font-size="18" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Clubhouse</text>
-        <text x="622" y="661" text-anchor="middle"
+        <text x="580" y="673" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
           fill="rgba(201,168,76,.85)" letter-spacing="2">3,419 SQM · 3 FLOORS</text>
       </g>
 
       <!-- ── TRAINING FIELD ─────────────────────────────────
-           Large green rectangle top-left of plan.
-           On the plan this is the major field west of the stables block.
-           Calibrated: x:18–215, y:18–450
+           Top-left rectangle (large green field).
+           Approx x:22–200, y:22–465.
       ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-training"
         data-zone="training"
-        points="18,18 215,18 215,450 18,450"
+        points="22,22 200,22 200,465 22,465"
         onclick="enterZone('training')"/>
       <g class="zone-label-group" id="label-training">
-        <rect x="20" y="198" width="176" height="56" rx="7"
+        <rect x="24" y="210" width="170" height="56" rx="7"
           fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
-        <text x="108" y="221" text-anchor="middle"
+        <text x="109" y="233" text-anchor="middle"
           font-family="Cormorant Garamond, serif" font-size="16" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Training Field</text>
-        <text x="108" y="242" text-anchor="middle"
+        <text x="109" y="254" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
           fill="rgba(201,168,76,.85)" letter-spacing="2">POLO ACADEMY · 5,000 SQM</text>
       </g>
 
       <!-- ── HORSE STABLES ──────────────────────────────────
-           Bottom-left cluster: stable blocks + service yard.
-           Calibrated: x:18–215, y:452–648
+           Bottom-left cluster: stables + quarantine + paddocks rows.
+           Approx x:22–195, y:468–635.
       ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-stables"
         data-zone="stables"
-        points="18,452 215,452 215,648 18,648"
+        points="22,468 195,468 195,635 22,635"
         onclick="enterZone('stables')"/>
       <g class="zone-label-group" id="label-stables">
-        <rect x="20" y="524" width="178" height="54" rx="7"
+        <rect x="24" y="528" width="172" height="54" rx="7"
           fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
-        <text x="109" y="545" text-anchor="middle"
+        <text x="110" y="549" text-anchor="middle"
           font-family="Cormorant Garamond, serif" font-size="17" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Horse Stables</text>
-        <text x="109" y="565" text-anchor="middle"
+        <text x="110" y="569" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
           fill="rgba(201,168,76,.85)" letter-spacing="2">4 BLOCKS · 56 STALLS</text>
       </g>
 
       <!-- ── PADDOCK ─────────────────────────────────────────
-           Green paddock area on the far east side of the plan.
-           Calibrated: x:1052–1200, y:240–540
+           Right side mid: the green paddock square east of villas.
+           Approx x:984–1175, y:260–520.
       ──────────────────────────────────────────────────────── -->
       <polygon class="zone-poly" id="zone-paddock"
         data-zone="paddock"
-        points="1052,240 1200,240 1200,540 1052,540"
+        points="984,260 1175,260 1175,520 984,520"
         onclick="enterZone('paddock')"/>
       <g class="zone-label-group" id="label-paddock">
-        <rect x="1050" y="362" width="154" height="54" rx="7"
+        <rect x="986" y="358" width="150" height="54" rx="7"
           fill="rgba(28,58,42,0.92)" stroke="rgba(201,168,76,.6)" stroke-width="1"/>
-        <text x="1127" y="383" text-anchor="middle"
+        <text x="1061" y="379" text-anchor="middle"
           font-family="Cormorant Garamond, serif" font-size="17" font-weight="400"
           fill="#F5F0E8" letter-spacing="1">Paddock</text>
-        <text x="1127" y="403" text-anchor="middle"
+        <text x="1061" y="399" text-anchor="middle"
           font-family="Inter, sans-serif" font-size="10" font-weight="400"
           fill="rgba(201,168,76,.85)" letter-spacing="2">EXERCISE · 1,645 SQM</text>
       </g>
@@ -757,19 +903,42 @@
     <div class="pano-zone-sub" id="pano-sub">EXPLORE · DRAG TO LOOK AROUND</div>
   </div>
 
-  <!-- Pannellum target -->
-  <div id="pannellum-container">
-    <!-- Placeholder shown before real panoramas are added -->
-    <div class="pano-placeholder" id="pano-placeholder">
-      <div class="pano-placeholder-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="1" stroke-linecap="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
-        </svg>
+  <!-- ═══════════════════════════════════════════════════
+       IMMERSIVE VIEWER
+       Multi-viewpoint parallax experience.
+       No Pannellum. No external panorama images.
+       Works with any flat render you have right now.
+  ════════════════════════════════════════════════════ -->
+  <div id="immersive-viewer">
+    <div id="parallax-stage">
+      <div id="parallax-img-wrap">
+        <img id="parallax-img" src="" alt="" draggable="false"/>
       </div>
-      <div class="pano-placeholder-label" id="pano-ph-name">Polo Field</div>
-      <div class="pano-placeholder-sub">Replace with equirectangular panorama</div>
+      <div id="parallax-vignette"></div>
+      <div id="parallax-fade"></div>
+    </div>
+    <div id="compass">
+      <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="26" cy="26" r="24" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+        <text x="26" y="9" text-anchor="middle" fill="rgba(255,255,255,.55)" font-size="7" font-family="Inter,sans-serif" font-weight="500" letter-spacing="1">N</text>
+        <text x="45" y="28.5" text-anchor="middle" fill="rgba(255,255,255,.28)" font-size="6" font-family="Inter,sans-serif">E</text>
+        <text x="26" y="48" text-anchor="middle" fill="rgba(255,255,255,.28)" font-size="6" font-family="Inter,sans-serif">S</text>
+        <text x="7" y="28.5" text-anchor="middle" fill="rgba(255,255,255,.28)" font-size="6" font-family="Inter,sans-serif">W</text>
+        <line id="compass-needle" x1="26" y1="26" x2="26" y2="7" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="26" cy="26" r="2.5" fill="#C9A84C"/>
+      </svg>
+    </div>
+    <div id="drag-hint">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+      Drag to explore
+    </div>
+    <div id="viewpoint-strip">
+      <div id="viewpoint-strip-label">VIEWPOINTS</div>
+      <div id="viewpoint-strip-inner"></div>
+    </div>
+    <div id="gradient-placeholder" style="display:none">
+      <div id="gp-label"></div>
+      <div id="gp-sub">Renders coming soon</div>
     </div>
   </div>
 
@@ -832,12 +1001,42 @@ const ZONES = {
     gfa: '—',
     type: 'Sport',
     desc: 'FIP-standard international polo field. The centrepiece of the estate and the beating heart of the Project XIX experience.',
-    panoImage: 'assets/panos/polo-field.jpg',
     panoGradient: 'linear-gradient(160deg, #1a3a22 0%, #2d5a3d 30%, #4a7c59 60%, #6b9e74 100%)',
-    panoYaw: 0,
-    panoHfov: 90,
-    // flyOrigin: centre of polo field on the plan (x:43%, y:56% of viewport)
     flyOrigin: { x: 43, y: 56 },
+    // ── 4 viewpoints using your ECAD renders ──────────────
+    // Each is a different aerial angle of the estate.
+    // compassBearing: degrees the needle points (0=N, 90=E, 180=S, 270=W)
+    // label: shown in the pano subtitle bar while this view is active
+    viewpoints: [
+      {
+        name: 'South View',
+        direction: 'Looking North',
+        label: 'From the South · Villas & Field',
+        image: 'assets/plan-3d.png',
+        compassBearing: 0,
+      },
+      {
+        name: 'East View',
+        direction: 'Looking West',
+        label: 'From the East · Apartment Block',
+        image: 'assets/3d.png',
+        compassBearing: 270,
+      },
+      {
+        name: 'West View',
+        direction: 'Looking East',
+        label: 'From the West · Full Site Context',
+        image: 'assets/3d_v2.png',
+        compassBearing: 90,
+      },
+      {
+        name: 'Overview',
+        direction: 'Looking Down',
+        label: 'Top-Down · Site Plan',
+        image: 'assets/plan-2d.png',
+        compassBearing: 0,
+      },
+    ],
   },
   'clubhouse': {
     name: 'Clubhouse & Pavilion',
@@ -847,7 +1046,7 @@ const ZONES = {
     gfa: '3,419',
     type: 'Hospitality',
     desc: 'Three-floor clubhouse with sports lounge, restaurant & bar, hotel check-in, 8 skyboxes with unobstructed polo views, and a tiered spectator stand.',
-    panoImage: 'assets/panos/clubhouse.jpg',
+    viewpoints: [],
     panoGradient: 'linear-gradient(150deg, #0e1a12 0%, #1c3a2a 40%, #2d5a3d 100%)',
     panoYaw: 180,
     panoHfov: 85,
@@ -862,7 +1061,7 @@ const ZONES = {
     gfa: '330',
     type: '3 Bed + Maids',
     desc: 'Three-bedroom polo-view villas on the western flank of the field. Each unit features undercroft parking, private garden, and direct polo field sightlines.',
-    panoImage: 'assets/panos/villa-west.jpg',
+    viewpoints: [],
     panoGradient: 'linear-gradient(140deg, #1a2c20 0%, #2a4a34 50%, #1c3a2a 100%)',
     panoYaw: 90,
     panoHfov: 80,
@@ -877,7 +1076,7 @@ const ZONES = {
     gfa: '330',
     type: '3 Bed + Maids',
     desc: 'Three-bedroom polo-view villas on the eastern flank with views over the proposed lake and the training grounds beyond.',
-    panoImage: 'assets/panos/villa-east.jpg',
+    viewpoints: [],
     panoGradient: 'linear-gradient(160deg, #172818 0%, #2a4a34 60%, #3d6645 100%)',
     panoYaw: 270,
     panoHfov: 80,
@@ -892,7 +1091,7 @@ const ZONES = {
     gfa: '125',
     type: '2 Bed Loft',
     desc: 'Two-bedroom loft terrace apartments arranged in a crescent along the northern edge, with rooftop terraces overlooking the full estate. Designed for residents, Airbnb and corporate leases.',
-    panoImage: 'assets/panos/loft-apts.jpg',
+    viewpoints: [],
     panoGradient: 'linear-gradient(170deg, #0f1e14 0%, #1c3a2a 45%, #2d5a3d 100%)',
     panoYaw: 180,
     panoHfov: 95,
@@ -907,7 +1106,7 @@ const ZONES = {
     gfa: '—',
     type: 'Equestrian',
     desc: 'Four stable blocks housing 14 stalls each. Purpose-built with tack rooms, vet access, quarantine paddocks, and a dedicated truck access drive.',
-    panoImage: 'assets/panos/stables.jpg',
+    viewpoints: [],
     panoGradient: 'linear-gradient(155deg, #1a1408 0%, #3a2c10 45%, #5a4820 100%)',
     panoYaw: 0,
     panoHfov: 85,
@@ -922,7 +1121,7 @@ const ZONES = {
     gfa: '—',
     type: 'Equestrian',
     desc: 'Full training field with 30, 40 and 60-yard practice zones, polo academy facilities, and quarantine paddocks adjacent to the stables.',
-    panoImage: 'assets/panos/training.jpg',
+    viewpoints: [],
     panoGradient: 'linear-gradient(145deg, #152810 0%, #254a1e 50%, #3a6e30 100%)',
     panoYaw: 45,
     panoHfov: 90,
@@ -937,7 +1136,7 @@ const ZONES = {
     gfa: '—',
     type: 'Equestrian',
     desc: 'Display and exercise paddock adjacent to the eastern training ground. Open to club members and tournament guests.',
-    panoImage: 'assets/panos/paddock.jpg',
+    viewpoints: [],
     panoGradient: 'linear-gradient(135deg, #1a2810 0%, #2d4a20 50%, #4a6e38 100%)',
     panoYaw: 180,
     panoHfov: 90,
@@ -954,7 +1153,7 @@ const ZONE_ORDER = [
 /* ─── State ─────────────────────────────────────── */
 let currentZone = null;
 let currentView = '2d';
-let pannellumViewer = null;
+// Pannellum removed — immersive parallax viewer active
 let drawerOpen = false;
 let hintDismissed = false;
 
@@ -981,6 +1180,9 @@ window.addEventListener('load', () => {
       hintDismissed = true;
     }
   });
+
+  // Initialise parallax drag events (attached once)
+  initParallaxEvents();
 
   // Loading → map after animation
   setTimeout(() => {
@@ -1029,14 +1231,35 @@ function enterZone(zoneId) {
   }, 700);
 }
 
-/* ─── Load panorama ─────────────────────────────── */
+/* ════════════════════════════════════════════════════════
+   IMMERSIVE VIEWER ENGINE
+   ════════════════════════════════════════════════════════
+   Replaces Pannellum entirely. Uses the ECAD renders as
+   multi-viewpoint parallax experiences — no equirectangular
+   images needed. Works with any flat render you have.
+   ════════════════════════════════════════════════════════ */
+
+/* ─── Parallax state ────────────────────────────── */
+const PX = {
+  active: false,
+  startX: 0, startY: 0,
+  currentX: 0, currentY: 0,
+  targetX: 0, targetY: 0,
+  maxTravel: 6,       // % of stage each direction — controls how far image shifts
+  rafId: null,
+  hintDismissed: false,
+};
+
+/* ─── Load zone into immersive viewer ───────────── */
 function loadPanorama(zoneId) {
   const zone = ZONES[zoneId];
 
-  // Update UI text
+  // Update nav bar
   document.getElementById('pano-title').textContent = zone.name;
-  document.getElementById('pano-sub').textContent = zone.subtitle.toUpperCase() + ' · DRAG TO LOOK AROUND';
-  document.getElementById('pano-ph-name').textContent = zone.name;
+  document.getElementById('pano-sub').textContent =
+    zone.viewpoints && zone.viewpoints.length
+      ? zone.subtitle.toUpperCase() + ' · ' + zone.viewpoints.length + ' VIEWPOINTS'
+      : zone.subtitle.toUpperCase();
 
   // Update info drawer
   document.getElementById('info-name').textContent = zone.name;
@@ -1045,174 +1268,250 @@ function loadPanorama(zoneId) {
   document.getElementById('info-gfa').childNodes[0].nodeValue = zone.gfa;
   document.getElementById('info-type').textContent = zone.type;
 
-  // Update nav dots
+  // Update zone nav dots
   document.querySelectorAll('.zone-dot').forEach(d => d.classList.remove('active'));
   const activeDot = document.getElementById(`dot-${zoneId}`);
   if (activeDot) activeDot.classList.add('active');
 
-  // Destroy previous viewer
-  if (pannellumViewer) {
-    try { pannellumViewer.destroy(); } catch(e) {}
-    pannellumViewer = null;
-  }
+  // Build viewpoint strip
+  buildViewpointStrip(zone);
 
-  // Clear placeholder interval on old container
-  const oldContainer = document.getElementById('pannellum-container');
-  if (oldContainer && oldContainer._placeholderInterval) {
-    clearInterval(oldContainer._placeholderInterval);
-  }
-
-  // Recreate container fresh so Pannellum always gets a clean div
-  const newContainer = document.createElement('div');
-  newContainer.id = 'pannellum-container';
-  newContainer.style.cssText = 'position:absolute;inset:0;';
-
-  // Rebuild placeholder inside new container
-  newContainer.innerHTML = `
-    <div class="pano-placeholder" id="pano-placeholder">
-      <div class="pano-placeholder-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="1" stroke-linecap="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
-        </svg>
-      </div>
-      <div class="pano-placeholder-label" id="pano-ph-name">${zone.name}</div>
-      <div class="pano-placeholder-sub">Panorama coming soon</div>
-    </div>
-  `;
-
-  oldContainer.parentNode.replaceChild(newContainer, oldContainer);
-
-  const container = document.getElementById('pannellum-container');
-  const placeholder = document.getElementById('pano-placeholder');
-
-  if (zone.panoImage) {
-    // ── Real panorama path is set — try to load it ──────────
-    placeholder.style.display = 'none';
-
-    // Show a subtle loading indicator while Pannellum fetches
-    const loadIndicator = document.createElement('div');
-    loadIndicator.id = 'pano-loading';
-    loadIndicator.style.cssText = [
-      'position:absolute;inset:0;z-index:2;display:flex;',
-      'align-items:center;justify-content:center;',
-      'background:var(--black);transition:opacity .5s ease;'
-    ].join('');
-    loadIndicator.innerHTML = `
-      <div style="text-align:center">
-        <div style="
-          width:40px;height:40px;border-radius:50%;
-          border:1.5px solid rgba(201,168,76,.15);
-          border-top-color:#C9A84C;
-          animation:spin .9s linear infinite;
-          margin:0 auto 14px;
-        "></div>
-        <div style="
-          font-family:'Inter',sans-serif;font-size:10px;
-          font-weight:400;letter-spacing:.18em;text-transform:uppercase;
-          color:rgba(245,240,232,.3);
-        ">Loading panorama</div>
-      </div>
-    `;
-    // Inject spin keyframe once
-    if (!document.getElementById('spin-style')) {
-      const s = document.createElement('style');
-      s.id = 'spin-style';
-      s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
-      document.head.appendChild(s);
-    }
-    container.appendChild(loadIndicator);
-
-    try {
-      pannellumViewer = pannellum.viewer('pannellum-container', {
-        type: 'equirectangular',
-        panorama: zone.panoImage,
-        autoLoad: true,
-        autoRotate: -1.2,
-        autoRotateInactivityDelay: 4000,
-        compass: false,
-        showControls: false,
-        mouseZoom: true,
-        hfov: zone.panoHfov || 90,
-        minHfov: 50,
-        maxHfov: 130,
-        yaw: zone.panoYaw || 0,
-        pitch: 0,
-        minPitch: -60,
-        maxPitch: 60,
-        draggable: true,
-        disableKeyboardCtrl: false,
-        touchPanSpeedCoeffFactor: 1,
-        captureKeyboardShortcuts: false,
-      });
-
-      // Fade out loader once image is ready
-      pannellumViewer.on('load', () => {
-        loadIndicator.style.opacity = '0';
-        setTimeout(() => loadIndicator.remove(), 500);
-      });
-
-      // Graceful fallback: if image 404s or fails, show gradient
-      pannellumViewer.on('error', () => {
-        console.warn(`Panorama not found: ${zone.panoImage} — using gradient placeholder`);
-        try { pannellumViewer.destroy(); } catch(e) {}
-        pannellumViewer = null;
-        loadIndicator.remove();
-        showGradientPlaceholder(container, zone, placeholder);
-      });
-
-    } catch(e) {
-      loadIndicator.remove();
-      showGradientPlaceholder(container, zone, placeholder);
-    }
-
+  // Show first viewpoint or gradient
+  if (zone.viewpoints && zone.viewpoints.length) {
+    document.getElementById('gradient-placeholder').style.display = 'none';
+    document.getElementById('parallax-stage').style.display = 'block';
+    switchViewpoint(zone.viewpoints[0], zone);
   } else {
-    // ── No image path set — show gradient placeholder ───────
-    showGradientPlaceholder(container, zone, placeholder);
+    // No viewpoints — show gradient
+    showGradientFallback(zone);
   }
+
+  // Reset parallax position
+  PX.currentX = 0; PX.currentY = 0;
+  PX.targetX = 0; PX.targetY = 0;
+  applyParallax(0, 0);
+  startParallaxLoop();
 }
 
-/* Show gradient placeholder + animate it */
-function showGradientPlaceholder(container, zone, placeholder) {
-  placeholder.style.display = 'flex';
-  container.style.background = zone.panoGradient;
-  animatePlaceholder(container, zone.panoGradient);
+/* ─── Build the viewpoint selector strip ────────── */
+function buildViewpointStrip(zone) {
+  const inner = document.getElementById('viewpoint-strip-inner');
+  inner.innerHTML = '';
+
+  if (!zone.viewpoints || !zone.viewpoints.length) {
+    document.getElementById('viewpoint-strip').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('viewpoint-strip').style.display = 'block';
+
+  zone.viewpoints.forEach((vp, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'vp-btn' + (i === 0 ? ' active' : '');
+    btn.id = `vp-btn-${i}`;
+    btn.setAttribute('aria-label', vp.name);
+    btn.innerHTML = `
+      <div class="vp-thumb">
+        <img src="${vp.image}" alt="${vp.name}" loading="lazy"/>
+      </div>
+      <div class="vp-name">${vp.name}</div>
+      <div class="vp-dir">${vp.direction}</div>
+    `;
+    btn.onclick = () => {
+      document.querySelectorAll('.vp-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      switchViewpoint(vp, zone);
+    };
+    inner.appendChild(btn);
+  });
 }
 
-/* Lightweight placeholder animation (simulates slight panning) */
-function animatePlaceholder(container, gradient) {
-  let angle = 160;
-  let dir = 1;
-  if (container._placeholderInterval) {
-    clearInterval(container._placeholderInterval);
+/* ─── Switch to a viewpoint with crossfade ──────── */
+let vpSwitching = false;
+function switchViewpoint(vp, zone) {
+  if (vpSwitching) return;
+
+  // Rotate compass needle
+  const needle = document.getElementById('compass-needle');
+  if (needle) {
+    needle.style.transform = `rotate(${vp.compassBearing || 0}deg)`;
   }
-  container._placeholderInterval = setInterval(() => {
+
+  const stage = document.getElementById('parallax-stage');
+  const fade = document.getElementById('parallax-fade');
+  const img = document.getElementById('parallax-img');
+
+  // If same image, skip transition
+  if (img.src.endsWith(vp.image.replace(/^\//, ''))) return;
+
+  vpSwitching = true;
+  stage.classList.add('transitioning');
+
+  // Fade out
+  fade.classList.add('active');
+
+  setTimeout(() => {
+    // Swap image
+    img.classList.add('loading');
+    img.onload = () => {
+      img.classList.remove('loading');
+      // Fade back in
+      fade.classList.remove('active');
+      stage.classList.remove('transitioning');
+      vpSwitching = false;
+    };
+    img.onerror = () => {
+      // Image not found — show gradient fallback
+      fade.classList.remove('active');
+      stage.classList.remove('transitioning');
+      vpSwitching = false;
+      showGradientFallback(zone);
+    };
+    img.src = vp.image;
+
+    // Set zoom level (controls how much of the image is visible — higher = more zoomed)
+    img.style.objectFit = 'cover';
+
+    // Update sub-label
+    document.getElementById('pano-sub').textContent =
+      vp.label ? vp.label.toUpperCase() : zone.subtitle.toUpperCase();
+
+  }, 340);
+}
+
+/* ─── Gradient fallback ─────────────────────────── */
+function showGradientFallback(zone) {
+  document.getElementById('parallax-stage').style.display = 'none';
+  document.getElementById('viewpoint-strip').style.display = 'none';
+  const gp = document.getElementById('gradient-placeholder');
+  gp.style.display = 'flex';
+  gp.style.background = zone.panoGradient;
+  document.getElementById('gp-label').textContent = zone.name;
+  // Animate gradient angle for atmosphere
+  let angle = 160, dir = 1;
+  if (window._gpInterval) clearInterval(window._gpInterval);
+  window._gpInterval = setInterval(() => {
     angle += dir * 0.15;
-    if (angle > 180 || angle < 140) dir *= -1;
-    const base = gradient.replace(/\d+deg/, `${angle.toFixed(1)}deg`);
-    container.style.background = base;
+    if (angle > 175 || angle < 145) dir *= -1;
+    gp.style.background = zone.panoGradient.replace(/\d+deg/, `${angle.toFixed(1)}deg`);
   }, 40);
+}
+
+/* ─── Parallax: apply position ───────────────────── */
+function applyParallax(x, y) {
+  const stage = document.getElementById('parallax-stage');
+  if (!stage) return;
+  // x,y are percentages within ±maxTravel
+  const tx = x * PX.maxTravel;
+  const ty = y * PX.maxTravel;
+  stage.style.transform = `translate(${tx}%, ${ty}%)`;
+}
+
+/* ─── Parallax: smooth animation loop ───────────── */
+function startParallaxLoop() {
+  if (PX.rafId) cancelAnimationFrame(PX.rafId);
+  const loop = () => {
+    // Lerp toward target
+    PX.currentX += (PX.targetX - PX.currentX) * 0.07;
+    PX.currentY += (PX.targetY - PX.currentY) * 0.07;
+    applyParallax(PX.currentX, PX.currentY);
+    PX.rafId = requestAnimationFrame(loop);
+  };
+  PX.rafId = requestAnimationFrame(loop);
+}
+
+/* ─── Parallax: mouse drag ───────────────────────── */
+function initParallaxEvents() {
+  const stage = document.getElementById('parallax-stage');
+  if (!stage) return;
+
+  let dragging = false;
+  let lastX = 0, lastY = 0;
+
+  const dismissHint = () => {
+    if (!PX.hintDismissed) {
+      document.getElementById('drag-hint').classList.add('hidden');
+      PX.hintDismissed = true;
+    }
+  };
+
+  // Mouse
+  stage.addEventListener('mousedown', e => {
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    dismissHint();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = (e.clientX - lastX) / window.innerWidth;
+    const dy = (e.clientY - lastY) / window.innerHeight;
+    PX.targetX = Math.max(-1, Math.min(1, PX.targetX - dx * 3));
+    PX.targetY = Math.max(-1, Math.min(1, PX.targetY - dy * 3));
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  // Touch
+  stage.addEventListener('touchstart', e => {
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+    dismissHint();
+  }, { passive: true });
+  stage.addEventListener('touchmove', e => {
+    const dx = (e.touches[0].clientX - lastX) / window.innerWidth;
+    const dy = (e.touches[0].clientY - lastY) / window.innerHeight;
+    PX.targetX = Math.max(-1, Math.min(1, PX.targetX - dx * 3));
+    PX.targetY = Math.max(-1, Math.min(1, PX.targetY - dy * 3));
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+  }, { passive: true });
+
+  // Gyroscope (mobile VR-feel) — only if device supports it
+  if (window.DeviceOrientationEvent) {
+    let gyroEnabled = false;
+    window.addEventListener('deviceorientation', e => {
+      if (!gyroEnabled) { dismissHint(); gyroEnabled = true; }
+      if (e.gamma != null && e.beta != null) {
+        // gamma: left/right tilt (±90), beta: forward/back tilt (±180)
+        PX.targetX = Math.max(-1, Math.min(1, e.gamma / 45));
+        PX.targetY = Math.max(-1, Math.min(1, (e.beta - 45) / 45));
+      }
+    });
+  }
+
+  // Gentle ambient drift when idle — makes it feel alive
+  let driftAngle = 0;
+  let lastInteract = Date.now();
+  const DRIFT_IDLE = 4000; // ms before drift starts
+  stage.addEventListener('mousedown', () => { lastInteract = Date.now(); });
+  stage.addEventListener('touchstart', () => { lastInteract = Date.now(); }, { passive: true });
+
+  const driftLoop = () => {
+    if (Date.now() - lastInteract > DRIFT_IDLE && !dragging) {
+      driftAngle += 0.003;
+      PX.targetX = Math.sin(driftAngle) * 0.3;
+      PX.targetY = Math.sin(driftAngle * 0.6) * 0.15;
+    }
+    requestAnimationFrame(driftLoop);
+  };
+  driftLoop();
 }
 
 /* ─── Exit pano → map ───────────────────────────── */
 function exitPano() {
-  // Fade overlay briefly
   const overlay = document.getElementById('fly-overlay');
   overlay.classList.add('active');
 
-  setTimeout(() => {
-    // Clean up pano
-    if (pannellumViewer) {
-      try { pannellumViewer.destroy(); } catch(e) {}
-      pannellumViewer = null;
-    }
-    const container = document.getElementById('pannellum-container');
-    if (container && container._placeholderInterval) {
-      clearInterval(container._placeholderInterval);
-    }
-    if (container) container.style.background = '';
+  // Stop parallax and gradient loops
+  if (PX.rafId) { cancelAnimationFrame(PX.rafId); PX.rafId = null; }
+  if (window._gpInterval) { clearInterval(window._gpInterval); window._gpInterval = null; }
 
+  // Reset hint for next zone entry
+  PX.hintDismissed = false;
+
+  setTimeout(() => {
     document.getElementById('screen-pano').classList.add('hidden');
     document.getElementById('screen-map').classList.remove('hidden');
     closeDrawer();
