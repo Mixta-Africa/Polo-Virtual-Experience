@@ -41,11 +41,26 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
   color:var(--cream);position:absolute;left:50%;transform:translateX(-50%)}
 .nbadge{font-size:9px;letter-spacing:.16em;text-transform:uppercase;
   color:var(--gold);border:1px solid rgba(201,168,76,.28);border-radius:3px;
-  padding:3px 8px;margin-left:auto}
+  padding:3px 8px;margin-left:14px}
+#walk-toggle{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.09)}
+#walk-toggle.active{background:rgba(201,168,76,.14);border-color:#C9A84C;color:#C9A84C}
 
-/* Crosshair */
+/* Cinematic hero title — fades in during intro, fades out once settled */
+#hero{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-end;padding-bottom:14vh;
+  pointer-events:none;opacity:0;transition:opacity 1.4s ease}
+#hero.show{opacity:1}
+#hero.fade{opacity:0}
+.hero-title{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:42px;
+  letter-spacing:.32em;color:var(--cream);text-shadow:0 2px 24px rgba(0,0,0,.6)}
+.hero-title span{color:var(--gold)}
+.hero-sub{font-size:11px;letter-spacing:.4em;text-transform:uppercase;
+  color:rgba(245,240,232,.65);margin-top:10px;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+
+/* Crosshair — hidden by default, Walk Mode only */
 #xhair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-  pointer-events:none;z-index:50;opacity:.35}
+  pointer-events:none;z-index:50;opacity:0;transition:opacity .3s}
+#xhair.show-walk{opacity:.35}
 #xhair::before,#xhair::after{content:'';position:absolute;background:var(--gold)}
 #xhair::before{width:14px;height:1px;top:0;left:-7px}
 #xhair::after{width:1px;height:14px;top:-7px;left:0}
@@ -106,6 +121,7 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
   opacity:0;transition:opacity .5s ease 1s;
 }
 #radar.show{opacity:1}
+#radar.show-walk{opacity:1}
 #radar-canvas{display:block;width:160px;height:104px}
 #radar-lbl{
   position:absolute;top:5px;left:8px;
@@ -142,7 +158,7 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
   top:50%;left:50%;transform:translate(-50%,-50%);
   pointer-events:none;transition:background .15s;
 }
-@media(pointer:coarse){#joy-move{display:block}}
+@media(pointer:coarse){#joy-move.show-walk{display:block}}
 /* ── Time of day ── */
 #todWrap{position:fixed;top:64px;right:16px;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:7px}
 .tod-btns{display:flex;gap:5px}
@@ -172,8 +188,14 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
     Masterplan
   </a>
   <div class="ntitle">Polo Field</div>
+  <button id="walk-toggle" class="nbk" onclick="toggleWalkMode()" style="margin-left:auto;">Walk Mode</button>
   <div class="nbadge">3D · LIVE</div>
 </nav>
+
+<div id="hero">
+  <div class="hero-title">PROJECT <span>XIX</span></div>
+  <div class="hero-sub">A Private Polo Estate</div>
+</div>
 
 <div id="todWrap">
   <div class="tod-btns">
@@ -186,7 +208,7 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
 </div>
 
 <div id="xhair"></div>
-<div id="hint">Drag to look · W A S D to walk · Click canvas to lock mouse for free look</div>
+<div id="hint" class="gone">W A S D to walk · drag to look · Esc to exit Walk Mode</div>
 
 <div id="zi">
   <div class="zl" id="zl">Zone</div>
@@ -197,6 +219,16 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
 <div id="vp">
   <div class="vplbl">Standing points</div>
   <div class="vprow">
+
+    <!-- Aerial Overview -->
+    <button class="vpb" id="vb-aerial" onclick="goAerial()">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="12" cy="12" rx="9" ry="5"/>
+        <ellipse cx="12" cy="12" rx="4" ry="2.2"/>
+        <path d="M3 12h1.5M19.5 12H21M12 3v1.5M12 19.5V21"/>
+      </svg>
+      <div class="vpnm">Aerial<br>Overview</div>
+    </button>
 
     <!-- Centre Field -->
     <button class="vpb on" id="vb0" onclick="goVP(0)">
@@ -310,6 +342,7 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /* ═══════════════════════════════════════════════
    SCENE SETUP
@@ -334,6 +367,62 @@ scene.fog = new THREE.Fog(0xc8e8b8, 220, 480);
 
 const camera = new THREE.PerspectiveCamera(68, W/H, 0.1, 600);
 camera.position.set(0, 1.65, 0);
+
+/* ═══════════════════════════════════════════════
+   EXPLORE MODE (default) — orbit/drag navigation,
+   like Google Earth or a product page. Walk Mode
+   (the original FPS system below) is an explicit,
+   deliberate opt-in, not the default experience.
+═══════════════════════════════════════════════ */
+let exploreMode = true;
+const orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.enableDamping = true;
+orbitControls.dampingFactor = 0.07;
+orbitControls.minDistance = 18;
+orbitControls.maxDistance = 380;
+orbitControls.maxPolarAngle = Math.PI / 2.12;   // don't let camera dip below the horizon
+orbitControls.target.set(0, 4, 0);
+orbitControls.enabled = true;
+
+// Generic camera "fly to" tween — used by both the cinematic intro and
+// the explore-mode viewpoint buttons. Sets position/target directly then
+// syncs OrbitControls' internal state via update(), so there's no fight
+// between the tween and user-drag input.
+let flyTween = null;
+function flyCamera(toPos, toTarget, duration = 2.2, onDone = null) {
+  const fromPos = camera.position.clone();
+  const fromTarget = orbitControls.target.clone();
+  flyTween = { fromPos, toPos: new THREE.Vector3(...toPos), fromTarget, toTarget: new THREE.Vector3(...toTarget), t0: performance.now(), duration, onDone };
+}
+function stepFlyTween() {
+  if (!flyTween) return false;
+  const t = Math.min(1, (performance.now() - flyTween.t0) / (flyTween.duration * 1000));
+  const s = t*t*(3-2*t);   // smoothstep ease
+  camera.position.lerpVectors(flyTween.fromPos, flyTween.toPos, s);
+  orbitControls.target.lerpVectors(flyTween.fromTarget, flyTween.toTarget, s);
+  orbitControls.update();
+  if (t >= 1) { const cb = flyTween.onDone; flyTween = null; if (cb) cb(); }
+  return true;
+}
+
+// Cinematic entry — camera starts high and distant, dollies in toward
+// the polo field over ~5s, with the hero title fading in on the motion
+// and fading out once the camera settles. Replaces the old "spawn at
+// ground level with no context" default.
+function playIntro() {
+  const startPos = [40, 195, 300];
+  const restPos  = ELEVATED_VIEWS[0].pos;
+  const restTgt  = ELEVATED_VIEWS[0].target;
+  camera.position.set(...startPos);
+  orbitControls.target.set(0, 6, -20);
+  orbitControls.update();
+  const hero = document.getElementById('hero');
+  requestAnimationFrame(() => hero.classList.add('show'));
+  flyCamera(restPos, restTgt, 5.0, () => {
+    setTimeout(() => hero.classList.add('fade'), 600);
+    showZoneInfo(0);
+  });
+}
 
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1549,16 +1638,17 @@ document.addEventListener('mousemove', e => {
   }
 });
 
-/* ── Drag look (non-locked) ── */
+/* ── Drag look (non-locked) — Walk Mode only; OrbitControls owns
+   canvas drag in Explore mode ── */
 cvs.addEventListener('mousedown', e => {
-  if(pointerLocked) return;
+  if(pointerLocked || exploreMode) return;
   isPointerDown = true;
   lastX = e.clientX; lastY = e.clientY;
   dismiss();
 });
 window.addEventListener('mouseup', () => isPointerDown = false);
 window.addEventListener('mousemove', e => {
-  if(!isPointerDown || pointerLocked) return;
+  if(!isPointerDown || pointerLocked || exploreMode) return;
   yaw   -= (e.clientX - lastX) * 0.003;
   pitch -= (e.clientY - lastY) * 0.003;
   pitch  = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
@@ -1566,9 +1656,10 @@ window.addEventListener('mousemove', e => {
   lastInteract = Date.now();
 });
 
-/* ── Touch look (right-side drag) ── */
+/* ── Touch look (right-side drag) — Walk Mode only ── */
 let touchLookId = null, tLookLX = 0, tLookLY = 0;
 cvs.addEventListener('touchstart', e => {
+  if (exploreMode) return;
   for(const t of e.changedTouches) {
     if(t.clientX > window.innerWidth * 0.45 && touchLookId === null) {
       touchLookId = t.identifier;
@@ -1578,6 +1669,7 @@ cvs.addEventListener('touchstart', e => {
   }
 }, {passive:true});
 cvs.addEventListener('touchmove', e => {
+  if (exploreMode) return;
   for(const t of e.changedTouches) {
     if(t.identifier === touchLookId) {
       yaw   -= (t.clientX - tLookLX) * 0.004;
@@ -1594,10 +1686,11 @@ cvs.addEventListener('touchend', e => {
   }
 }, {passive:true});
 
-/* ── Gyroscope ── */
+/* ── Gyroscope — Walk Mode only ── */
 if(window.DeviceOrientationEvent) {
   let cal = null;
   window.addEventListener('deviceorientation', e => {
+    if (exploreMode) return;
     if(!cal && e.gamma != null) cal = {b:e.beta, g:e.gamma};
     if(cal && e.gamma != null) {
       yaw   = -(e.gamma - cal.g) * 0.018 + Math.PI;
@@ -1612,7 +1705,7 @@ document.addEventListener('keydown', e => {
   keys[e.code] = true;
   if(e.code === 'Escape') {
     if(pointerLocked) document.exitPointerLock?.();
-    else window.location.href = 'index.html';
+    else if(!exploreMode) toggleWalkMode();
   }
   // Walking keys enable free walk mode
   if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) {
@@ -1624,6 +1717,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { keys[e.code] = false; });
 
 function enableFreeWalk() {
+  if (exploreMode) { toggleWalkMode(); return; }
   freeWalk = true;
   document.getElementById('mode-badge').classList.add('show');
   // Clear VP buttons
@@ -1682,6 +1776,19 @@ const VIEWPOINTS = [
   { pos:[100, EYE_HEIGHT,-195],  yaw:Math.PI/4,  pitch:0,     label:'Stables Yard' },
 ];
 
+// Explore mode — elevated "product shot" framing for the same six
+// standing points, used by OrbitControls-driven flights instead of
+// dropping the camera at eye level with no context.
+const ELEVATED_VIEWS = [
+  { pos:[0,    52, 165],  target:[0,   2,  0],  label:'Centre Field' },
+  { pos:[145,  38,  55],  target:[92,  8,  0],  label:'Clubhouse (South)' },
+  { pos:[-60,  30,-115],  target:[-76, 2,-40],  label:'Pony Line' },
+  { pos:[-150, 32,  35],  target:[-94, 3,  0],  label:'Lake (North)' },
+  { pos:[-155, 26,  55],  target:[-102,6, 20],  label:'Villas — North' },
+  { pos:[195,  40,-155],  target:[100, 3,-195], label:'Stables Yard' },
+];
+const AERIAL_VIEW = { pos:[10, 165, 260], target:[0, 0, -10] };
+
 let curVP = 0;
 
 function setVP(idx) {
@@ -1694,6 +1801,11 @@ function setVP(idx) {
   yaw   = vp.yaw;
   pitch = vp.pitch;
   document.querySelectorAll('.vpb').forEach((b,i) => b.classList.toggle('on', i===idx));
+  showZoneInfo(idx);
+  dismiss();
+}
+
+function showZoneInfo(idx) {
   const infos = [
     { lbl:'Main Field',  name:'International Polo Field',   desc:'FIP-standard · 275m × 145m · Red laterite pony track · 30, 40 and 60-yard markings' },
     { lbl:'Hospitality', name:'Clubhouse & Pavilion',       desc:'3-floor luxury clubhouse · 3,419 sqm · South touchline, directly opposite the lake · Tiered spectator stands' },
@@ -1703,11 +1815,71 @@ function setVP(idx) {
     { lbl:'Equestrian',  name:'Horse Stables',              desc:'4 blocks · 56 stalls · Red laterite brick · Exposed timber trusses · Terracotta roof · Cobblestone yard' },
   ];
   showInfo(infos[idx].lbl, infos[idx].name, infos[idx].desc);
-  dismiss();
 }
 
-function goVP(idx) { setVP(idx); }
+// goVP is the single entry point the UI calls — behaviour depends on mode.
+function goVP(idx) {
+  document.querySelectorAll('.vpb').forEach((b,i) => b.classList.toggle('on', i===idx));
+  if (exploreMode) {
+    curVP = idx;
+    const v = ELEVATED_VIEWS[idx];
+    flyCamera(v.pos, v.target, 2.2);
+    showZoneInfo(idx);
+    dismiss();
+  } else {
+    setVP(idx);
+  }
+}
 window.goVP = goVP;
+
+function goAerial() {
+  document.querySelectorAll('.vpb').forEach(b => b.classList.remove('on'));
+  document.getElementById('vb-aerial')?.classList.add('on');
+  if (!exploreMode) toggleWalkMode();   // aerial is an explore-only view
+  flyCamera(AERIAL_VIEW.pos, AERIAL_VIEW.target, 2.6);
+  showInfo('Overview', 'Project XIX — Aerial', 'The full estate: polo field, lake, clubhouse and villa ring in context.');
+  dismiss();
+}
+window.goAerial = goAerial;
+
+// ── Walk Mode toggle — the FPS system below is fully built and stays
+//    exactly as-is; it's just no longer the default. Explicit opt-in.
+function toggleWalkMode() {
+  exploreMode = !exploreMode;
+  const btn = document.getElementById('walk-toggle');
+  if (!exploreMode) {
+    // Entering Walk Mode: hand off from wherever the orbit camera is
+    orbitControls.enabled = false;
+    const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+    yaw = Math.atan2(dir.x, dir.z);
+    pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, Math.asin(dir.y)));
+    camPos.set(camera.position.x, EYE_HEIGHT, camera.position.z);
+    targetPos.copy(camPos);
+    freeWalk = true;
+    document.getElementById('mode-badge').classList.add('show');
+    document.getElementById('radar').classList.add('show-walk');
+    document.getElementById('joy-move').classList.add('show-walk');
+    document.getElementById('hint').classList.remove('gone');
+    document.getElementById('xhair').classList.add('show-walk');
+    btn.textContent = 'Exit Walk Mode';
+    btn.classList.add('active');
+    showInfo('Walk Mode', 'Free Exploration', 'W A S D to walk · drag or click to look · Esc to exit');
+  } else {
+    // Returning to Explore: hand back to the orbit camera from here
+    freeWalk = false;
+    velocity.set(0,0,0);
+    orbitControls.target.set(camPos.x + Math.sin(yaw)*20, 3, camPos.z + Math.cos(yaw)*20);
+    orbitControls.enabled = true;
+    document.getElementById('mode-badge').classList.remove('show');
+    document.getElementById('radar').classList.remove('show-walk');
+    document.getElementById('joy-move').classList.remove('show-walk');
+    document.getElementById('xhair').classList.remove('show-walk');
+    document.getElementById('hint').classList.add('gone');
+    btn.textContent = 'Walk Mode';
+    btn.classList.remove('active');
+  }
+}
+window.toggleWalkMode = toggleWalkMode;
 
 let hinted = false;
 function dismiss() {
@@ -1970,7 +2142,8 @@ function toggleDebug() {
   debugMode = !debugMode;
   debugGroup.visible = debugMode;
   document.getElementById('debug-hud').style.display = debugMode ? 'flex' : 'none';
-  if (debugMode) { freeWalk = false; }
+  if (debugMode) { freeWalk = false; orbitControls.enabled = false; }
+  else { orbitControls.enabled = exploreMode; }
 }
 window.toggleDebug = toggleDebug;
 document.addEventListener('keydown', (e) => {
@@ -2052,21 +2225,29 @@ function animate() {
     camPos.set(newX, EYE_HEIGHT, newZ);
     targetPos.copy(camPos);
 
+    camera.position.copy(camPos);
+    lookDir.set(
+      Math.sin(yaw) * Math.cos(pitch),
+      Math.sin(pitch),
+      Math.cos(yaw) * Math.cos(pitch)
+    );
+    camera.lookAt(camPos.clone().add(lookDir));
+
+  } else if (exploreMode) {
+    // Explore mode — a fly tween in progress takes priority; otherwise
+    // OrbitControls drives the camera (drag to rotate, scroll to zoom).
+    if (!stepFlyTween() && !debugMode) orbitControls.update();
   } else {
-    // VP mode — smooth lerp to target
+    // VP mode (walk-mode ground-level teleport) — smooth lerp to target
     camPos.lerp(targetPos, 0.055);
+    camera.position.copy(camPos);
+    lookDir.set(
+      Math.sin(yaw) * Math.cos(pitch),
+      Math.sin(pitch),
+      Math.cos(yaw) * Math.cos(pitch)
+    );
+    camera.lookAt(camPos.clone().add(lookDir));
   }
-
-  // Apply camera position
-  camera.position.copy(camPos);
-
-  // Camera orientation from yaw/pitch
-  lookDir.set(
-    Math.sin(yaw) * Math.cos(pitch),
-    Math.sin(pitch),
-    Math.cos(yaw) * Math.cos(pitch)
-  );
-  camera.lookAt(camPos.clone().add(lookDir));
 
   // Update radar every frame
   drawRadar();
@@ -2106,10 +2287,9 @@ function build() {
         document.getElementById('loader').classList.add('out');
         document.getElementById('nav').classList.add('show');
         document.getElementById('vp').classList.add('show');
-        document.getElementById('radar').classList.add('show');
         setTimeout(() => document.getElementById('loader').remove(), 1000);
-        setVP(0);
         animate();
+        playIntro();
       }, 400);
       return;
     }
