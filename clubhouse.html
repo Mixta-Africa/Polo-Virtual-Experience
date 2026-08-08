@@ -268,6 +268,40 @@ function frondCanvas(){
 }
 const frondTex = frondCanvas();
 
+// ── Split-face stone wall (entrance accent, per reference render) ──
+const stoneTex = tex(512,512,(g,w,h)=>{
+  g.fillStyle='#c2ac86'; g.fillRect(0,0,w,h);
+  const rowH=38;
+  for (let y=0,row=0; y<h; y+=rowH, row++){
+    let x = -rand(0,40) + (row%2)*20;
+    while (x<w){
+      const bw = rand(50,110);
+      const v = rand(-22,20);
+      g.fillStyle = `rgb(${168+v|0},${150+v|0},${118+v*0.8|0})`;
+      g.fillRect(x, y, bw-3, rowH-3);
+      // texture speckle per stone
+      for (let i=0;i<25;i++){ g.fillStyle=`rgba(${rand(90,140)|0},${rand(75,120)|0},${rand(50,90)|0},${rand(.08,.22)})`; g.fillRect(x+rand(0,bw-3),y+rand(0,rowH-3),rand(2,6),rand(2,4)); }
+      g.fillStyle='rgba(60,48,32,.4)'; g.fillRect(x,y,bw-3,1.5);
+      x += bw;
+    }
+    g.fillStyle='rgba(40,32,22,.5)'; g.fillRect(0,y,w,2);
+  }
+},2.4,2.4);
+const stoneRough = tex(256,256,(g,w,h)=>{ g.fillStyle='#a8a8a8'; g.fillRect(0,0,w,h); for(let i=0;i<3000;i++){ const v=rand(150,230)|0; g.fillStyle=`rgba(${v},${v},${v},.5)`; g.fillRect(rand(0,w),rand(0,h),2,2);} },2.4,2.4);
+
+// ── Timber slat ceiling (linear slats, warm dark iroko, per reference render) ──
+const slatCeilTex = tex(256,256,(g,w,h)=>{
+  g.fillStyle='#3a2412'; g.fillRect(0,0,w,h);
+  const sW = 10;
+  for (let x=0;x<w;x+=sW){
+    const v = rand(-14,16);
+    g.fillStyle = `rgb(${74+v|0},${48+v*.8|0},${26+v*.5|0})`;
+    g.fillRect(x, 0, sW-1.6, h);
+    for (let i=0;i<14;i++){ g.strokeStyle=`rgba(30,18,8,${rand(.15,.35)})`; g.lineWidth=.6; g.beginPath(); g.moveTo(x+rand(1,sW-2),0); g.lineTo(x+rand(1,sW-2),h); g.stroke(); }
+  }
+},1,6);
+
+
 /* ═══════════════════════════ MATERIALS ═════════════════════════════════ */
 const M = {
   plaster: new THREE.MeshStandardMaterial({ map:plasterTex, roughnessMap:plasterRough, roughness:.92, color:0xf2ead9 }),
@@ -287,6 +321,9 @@ const M = {
   balGlass: new THREE.MeshPhysicalMaterial({ color:0xaac8d8, roughness:.05, transparent:true, opacity:.28, envMapIntensity:1.8, side:THREE.DoubleSide }),
   darkFrame: new THREE.MeshStandardMaterial({ color:0x2a2a28, roughness:.5, metalness:.4 }),
   bleacher: new THREE.MeshStandardMaterial({ map:paveTex, color:0xd8d0be, roughness:.85 }),
+  stone: new THREE.MeshStandardMaterial({ map:stoneTex, roughnessMap:stoneRough, roughness:.88, color:0xd6c4a0 }),
+  slatCeil: new THREE.MeshStandardMaterial({ map:slatCeilTex, roughness:.6 }),
+  darkPost: new THREE.MeshStandardMaterial({ color:0x1c1a16, roughness:.35, metalness:.25 }),
   seat: new THREE.MeshStandardMaterial({ color:0xcfc6b0, roughness:.8 }),
   parasol: new THREE.MeshStandardMaterial({ color:0xe8ddc4, roughness:.8, side:THREE.DoubleSide }),
   interiorFloor: new THREE.MeshStandardMaterial({ map:paveTex, color:0xd8ccb2, roughness:.6 }),
@@ -294,6 +331,7 @@ const M = {
 };
 
 /* ═══════════════════════════ GROUND / FIELD ════════════════════════════ */
+const palms = [];
 const B = { W:86, D:18, F:4.2, SLAB:0.36, OVH:2.4 };      // building basics
 const world = new THREE.Group(); scene.add(world);
 
@@ -437,6 +475,68 @@ for (const s of [-1,1]){
   box(6.6, .4, 6.6, M.slab, tx, 3*F + 3.7, tz, bld);   // cap slab
 }
 
+// ── ENTRANCE LOUNGE — matches reference: split-face stone wall,
+//    dark round posts, timber slat ceiling, low horizontal timber
+//    terracing stepping down to the lawn, single palm, glass wall ──
+const lounge = new THREE.Group(); world.add(lounge);
+{
+  const LX = -34, LZ = -B.D/2 - 3;   // west corner of the ground floor, field-facing
+  const LW = 24, LD = 9;
+
+  // Stone accent wall (right side, as in reference)
+  const stoneWall = box(0.4, F-0.2, LD, M.stone, LX+LW/2-0.2, F/2-0.1, LZ, lounge);
+  // Glass wall (left side, opens to the pitch)
+  const gWall = new THREE.Mesh(new THREE.PlaneGeometry(LD-0.6, F-0.6), M.glass);
+  gWall.rotation.y = Math.PI/2; gWall.position.set(LX-LW/2+0.2, F/2-0.1, LZ); lounge.add(gWall);
+  const gFrame = box(0.06, F-0.6, LD-0.6, M.darkFrame, LX-LW/2+0.2, F/2-0.1, LZ, lounge, false);
+
+  // Timber slat ceiling with deep overhang (the signature roof plane)
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(LW+3, LD+5), M.slatCeil);
+  ceil.rotation.x = Math.PI/2; ceil.position.set(LX, F-0.05, LZ+1.2); lounge.add(ceil);
+  box(LW+3, 0.14, LD+5, M.plasterWhite, LX, F+0.02, LZ+1.2, lounge);   // thin roof edge cap
+
+  // Round dark support posts along the open (south) edge
+  for (let i=0;i<=4;i++){
+    const px = LX - LW/2 + i*(LW/4);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11, F-0.15, 10), M.darkPost);
+    post.position.set(px, F/2-0.08, LZ + LD/2 - 0.3); post.castShadow = true; lounge.add(post);
+  }
+
+  // Low horizontal timber terracing — stepping down toward the lawn (reference photo)
+  for (let t=0;t<4;t++){
+    const tz = LZ + LD/2 + 1.6 + t*1.5;
+    const bench = box(LW+2, 0.16, 1.05, M.timber, LX, 0.16 - t*0.02, tz, lounge);
+  }
+
+  // Lounge furniture — low cream sofas + timber coffee tables (reference)
+  const sofaMat = new THREE.MeshStandardMaterial({ color:0xe6ddc8, roughness:.95 });
+  for (let i=0;i<3;i++){
+    const sx = LX - 7 + i*7;
+    box(3.2, 0.55, 1.3, sofaMat, sx, 0.35, LZ-1.5, lounge);
+    box(3.0, 0.4, 0.35, M.timber, sx, 0.42, LZ-0.4, lounge);
+  }
+
+  // Single feature palm at the terrace corner (reference)
+  (function entrancePalm(){
+    const g = new THREE.Group(); g.position.set(LX-LW/2-1.5, 0, LZ+2.5); lounge.add(g);
+    const h = 8.5; const lean = .12;
+    const pts = []; for (let i=0;i<=8;i++){ const t=i/8; pts.push(new THREE.Vector3(Math.sin(lean)*t*t*h*.5, t*h, 0)); }
+    const trunk = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, .2, 7), M.trunk);
+    trunk.castShadow = true; g.add(trunk);
+    const crown = new THREE.Group(); crown.position.copy(pts[8]); g.add(crown);
+    for (let i=0;i<10;i++){
+      const f = new THREE.Mesh(new THREE.PlaneGeometry(4.2,1.05,8,1), M.frond);
+      const p = f.geometry.attributes.position;
+      for (let v=0;v<p.count;v++){ const px=p.getX(v); const t=(px+2.1)/4.2; p.setY(v, p.getY(v)-t*t*1.5); }
+      p.needsUpdate = true; f.geometry.computeVertexNormals();
+      f.position.x = 2.0; f.castShadow = true;
+      const hold = new THREE.Group(); hold.rotation.y = (i/10)*Math.PI*2; hold.rotation.z = -0.05-Math.random()*0.27;
+      hold.add(f); crown.add(hold);
+    }
+    palms.push({ crown, phase: rand(0,6.28) });
+  })();
+}
+
 // ── Bleachers (tiered, split by central stair, per render) ──
 const stands = new THREE.Group(); world.add(stands);
 const TIERS = 6, tierD = 1.15, tierH = .52;
@@ -469,7 +569,6 @@ const interior = new THREE.Group(); world.add(interior);
 }
 
 /* ═══════════════════════════ PALM TREES (with sway) ════════════════════ */
-const palms = [];
 function palm(x, z, s=1){
   const g = new THREE.Group(); g.position.set(x,0,z);
   const h = rand(7,11)*s;
@@ -591,6 +690,7 @@ document.querySelectorAll('.tod-btn').forEach(b=> b.addEventListener('click', ()
 const EYE = 1.65;
 const VPS = [
   { name:'Field Approach', icon:'M3 20l7-14 4 7 3-4 4 11z', pos:[0, EYE+0.4, -66], yaw:Math.PI, pitch:.04 },
+  { name:'Entrance Lounge', icon:'M4 20V10l8-6 8 6v10M4 20h16M8 20v-6h8v6', pos:[-34, EYE, -B.D/2-8], yaw:0, pitch:0 },
   { name:'Bleachers',      icon:'M4 18h4v-3h4v-3h4V9h4', pos:[8, 2.6, -B.D/2-CBD-5], yaw:Math.PI, pitch:.12 },
   { name:'Grand Terrace',  icon:'M12 3v4M5 11a7 7 0 0 1 14 0M12 7v13M8 20h8', pos:[0, F+EYE, TER_Z+1], yaw:0, pitch:-.05 },
   { name:'Skybox Lounge',  icon:'M3 9h18v9H3zM3 9l3-4h12l3 4M9 13h6', pos:[-6, F+EYE, -B.D/2-CBD+3.4], yaw:0, pitch:0 },
@@ -673,6 +773,19 @@ function clampPos(p){
 /* ═══════════════════════════ MAIN LOOP ═════════════════════════════════ */
 const mmDot = document.getElementById('mmDot'), mmCone = document.getElementById('mmCone'), coordsEl = document.getElementById('coords');
 const clock = new THREE.Clock();
+
+/* ── Seamless portal back to the polo field ── */
+let portalFired = false;
+const portalFade = document.createElement('div');
+portalFade.style.cssText = 'position:fixed;inset:0;background:#0a0f0c;opacity:0;pointer-events:none;z-index:90;transition:opacity .35s';
+document.body.appendChild(portalFade);
+function firePortal(url){ portalFired = true; portalFade.style.opacity = '1'; setTimeout(()=> window.location.href = url, 380); }
+(function fadeInIfArriving(){
+  if (new URLSearchParams(window.location.search).get('entry') === 'field'){
+    portalFade.style.opacity = '1';
+    requestAnimationFrame(()=> setTimeout(()=> portalFade.style.opacity = '0', 60));
+  }
+})();
 let envTimer = 0;
 setHour(10.5);
 refreshEnv();
@@ -681,6 +794,11 @@ function animate(){
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), .05);
   const t = clock.elapsedTime;
+
+  // Walk far enough back toward the field and the estate "continues" — portal to polo-field.html
+  if (freeWalk && !portalFired && camera.position.z < -64){
+    firePortal('polo-field.html?entry=clubhouse');
+  }
 
   // VP lerp
   if (lerpT < 1){
