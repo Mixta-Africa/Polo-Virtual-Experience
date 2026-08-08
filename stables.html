@@ -1056,8 +1056,8 @@ function palm(px,pz,s){
 /* ═══════════════════════════ CONTEXT SKYLINE ════════════════════════════
    The stables don't stand alone — the rest of the estate is visible on
    the horizon, at the same relative positions as in polo-field.html
-   (stables sit at world (118,-190) there with no rotation, so this is a
-   straight translation: local_x = wx-118, local_z = wz+190).
+   (stables sit at world (175,-190) there with no rotation, so this is a
+   straight translation: local_x = wx-175, local_z = wz+190).
    Low-poly + flat colour on purpose — fog does the realism work.
 ════════════════════════════════════════════════════════════════════════ */
 {
@@ -1067,19 +1067,19 @@ function palm(px,pz,s){
   const ctx = grp(); scene.add(ctx);
 
   // Polo field — distant green rectangle toward the estate
-  add(ctx, box(180, 0.2, 90, cGrass), -118, 0.1, 190);
+  add(ctx, box(180, 0.2, 90, cGrass), -175, 0.1, 190);
   // Lake beyond the field's north edge
-  add(ctx, box(150, 0.3, 20, cLake), -212, 0.15, 190);
+  add(ctx, box(150, 0.3, 20, cLake), -269, 0.15, 190);
   // Clubhouse — small pale mass, south side of the field
-  add(ctx, box(60, 12, 10, cClub), -26, 6, 190);
+  add(ctx, box(60, 12, 10, cClub), -83, 6, 190);
   // Villa rows flanking the field
-  for (let i=0;i<10;i++) add(ctx, box(5,7,5, cVilla), -220 + i*11, 3.5, 178);
-  for (let i=0;i<10;i++) add(ctx, box(5,7,5, cVilla), -220 + i*11, 3.5, 202);
+  for (let i=0;i<10;i++) add(ctx, box(5,7,5, cVilla), -277 + i*11, 3.5, 178);
+  for (let i=0;i<10;i++) add(ctx, box(5,7,5, cVilla), -277 + i*11, 3.5, 202);
   // Loft apartment strip further out
-  add(ctx, box(160, 5, 6, cWhite), -118, 2.5, 246);
+  add(ctx, box(160, 5, 6, cWhite), -175, 2.5, 246);
 
   // Training field — right next door, close by
-  add(ctx, box(90, 0.2, 130, cGrass), -53, 0.1, -25);
+  add(ctx, box(90, 0.2, 130, cGrass), -110, 0.1, -25);
 }
 
 
