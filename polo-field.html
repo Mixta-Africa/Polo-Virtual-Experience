@@ -289,6 +289,8 @@ body{background:#0a1008;overflow:hidden;font-family:'Inter',sans-serif}
   <div id="radar-coords" id="radar-coords"></div>
 </div>
 
+<button id="debug-toggle-btn" onclick="toggleDebug()" style="position:fixed;bottom:16px;right:200px;z-index:20;background:rgba(10,16,12,.6);border:1px solid rgba(245,240,232,.28);color:rgba(245,240,232,.8);border-radius:6px;font-size:10px;letter-spacing:.1em;padding:8px 12px;cursor:pointer;backdrop-filter:blur(8px);font-family:Inter,sans-serif;">PLAN VIEW</button>
+
 <!-- Movement mode badge -->
 <div id="mode-badge">Free Walk · Click to lock mouse</div>
 
@@ -417,13 +419,13 @@ for (let i=0;i<14;i++){                               // villa rows (both sides,
 }
 _glow(16, 8, 118, 10, 55, -Math.PI/2);                // apartment block A
 _glow(16, 8, 118, 10, -55, -Math.PI/2);               // apartment block B
-_glow(26, 2.4, 108, 2.4, -190);                       // stables (southwest)
+_glow(26, 2.4, 165, 2.4, -190);                       // stables (southwest)
 const _nightPts = [
   new THREE.PointLight(0xffd090, 0, 60, 1.6),
   new THREE.PointLight(0xffd090, 0, 50, 1.6),
   new THREE.PointLight(0xffc878, 0, 40, 1.8),
 ];
-_nightPts[0].position.set(84, 8, 0); _nightPts[1].position.set(108, 5, -195); _nightPts[2].position.set(-94, 6, 0);
+_nightPts[0].position.set(84, 8, 0); _nightPts[1].position.set(165, 5, -195); _nightPts[2].position.set(-94, 6, 0);
 _nightPts.forEach(l=>scene.add(l));
 
 const _fogDay = new THREE.Color(0xc8e8b8), _fogDusk = new THREE.Color(0xe0a870), _fogNight = new THREE.Color(0x0a1220);
@@ -708,11 +710,20 @@ const arcGeo = new THREE.CylinderGeometry(10.5, 10.5, 0.06, 20, 1, false, 0, Mat
   fieldGrp.add(arc);
 });
 
-// Yard line markings
-[0,-82,82,-55,55,-27,27].forEach((z,i) => {
-  const lm = plane(145, i===0?0.5:0.4, M.line);
-  lm.material = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.5, transparent:true, opacity: i===0?0.9:0.65 });
-  add(fieldGrp, lm, 0, 0.055, z);
+// Yard line markings — correct FIP distances MEASURED FROM EACH GOAL LINE
+// (goal lines at z=±137.5). 30yd=27.43m, 40yd=36.58m, 60yd=54.86m from goal.
+// These were previously placed at arbitrary round-metre offsets from centre —
+// wrong; a 40-yard line must sit 40 yards from the goal, not from the middle.
+const halfway = plane(145, 0.5, M.line);
+halfway.material = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.5, transparent:true, opacity:0.9 });
+add(fieldGrp, halfway, 0, 0.055, 0);
+[27.43, 36.58, 54.86].forEach(ydFromGoal => {
+  [-1, 1].forEach(side => {
+    const z = side * (137.5 - ydFromGoal);
+    const lm = plane(145, 0.4, M.line);
+    lm.material = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.5, transparent:true, opacity:0.65 });
+    add(fieldGrp, lm, 0, 0.055, z);
+  });
 });
 // Side lines
 [-72,72].forEach(x => {
@@ -1106,7 +1117,7 @@ function buildStables() {
     desc:'4 blocks · 56 stalls · Red laterite brick · Exposed timber trusses · Terracotta tiled roof · Cobblestone courtyard' };
   clickables.push(sb1);
 
-  g.position.set(118, 0, -190);   // southwest corner, adjacent to training field
+  g.position.set(175, 0, -190);   // southwest corner, clear of training field's N-S footprint
   scene.add(g);
 }
 
@@ -1143,10 +1154,12 @@ function buildCrescent() {
    TRAINING FIELD
 ═══════════════════════════════════════════════ */
 function buildTraining() {
-  const surround = plane(122, 188, M.laterite);
-  surround.position.set(65, 0.005, -215);   // southwest corner: south flank (+X), west end (-Z)
+  // Long axis along X (north-south) — perpendicular to the main field,
+  // which runs along Z (east-west). These must NOT share the same axis.
+  const surround = plane(188, 122, M.laterite);
+  surround.position.set(65, 0.005, -215);
   scene.add(surround);
-  const grass = plane(100, 165, M.grass);
+  const grass = plane(165, 100, M.grass);
   grass.position.set(65, 0.01, -215);
   scene.add(grass);
   grass.userData = { zone:'training', lbl:'Equestrian', name:'Training Field',
@@ -1734,11 +1747,124 @@ function firePortal(url) {
   if (entry === 'clubhouse') {
     camera.position.set(84, EYE_HEIGHT, 0); yaw = -Math.PI/2; freeWalk = true;
   } else if (entry === 'stables') {
-    camera.position.set(108, EYE_HEIGHT, -172); yaw = -Math.PI/4; freeWalk = true;
+    camera.position.set(165, EYE_HEIGHT, -172); yaw = -Math.PI/4; freeWalk = true;
   }
   portalFade.style.opacity = '0';
 })();
 const palmCrowns = [];
+
+/* ═══════════════════════════════════════════════
+   MASTERPLAN DEBUG MODE
+   Press 'M' (or the on-screen toggle) to switch to a true top-down
+   orthographic view with a metric grid, north arrow, the real plan-2d.png
+   as an aligned overlay, wireframe footprints of every major zone, and
+   dimension labels — so geometry can be verified against the plan by eye
+   instead of by trust. Nudge the overlay with arrow keys if it's off;
+   [ and ] rotate it 90° in case the source image's orientation differs.
+═══════════════════════════════════════════════ */
+let debugMode = false;
+const debugGroup = new THREE.Group();
+scene.add(debugGroup);
+
+// Orthographic top-down camera sized to the whole estate
+const debugCam = new THREE.OrthographicCamera(-260, 260, 260, -260, 1, 800);
+debugCam.position.set(0, 400, 0);
+debugCam.up.set(0, 0, -1);       // so "up" on screen reads toward -Z consistently
+debugCam.lookAt(0, 0, 0);
+
+// Metric grid — every 10m, major lines every 50m
+const grid = new THREE.GridHelper(520, 52, 0x2a6b3a, 0x8fae7c);
+grid.position.y = 0.3;
+debugGroup.add(grid);
+
+// North arrow — north = -X in this scene's convention
+{
+  const arrowMat = new THREE.MeshBasicMaterial({ color: 0xCC2200 });
+  const shaft = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 14), arrowMat);
+  shaft.position.set(-230, 1, -230); debugGroup.add(shaft);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(3, 8, 8), arrowMat);
+  head.rotation.z = Math.PI/2; head.position.set(-241, 1, -230); debugGroup.add(head);
+}
+
+// Real plan-2d.png overlay — semi-transparent, nudgeable/rotatable to align
+const planOverlayGeo = new THREE.PlaneGeometry(490, 275);   // Z-span × X-span (length × width)
+const planOverlayMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.55, depthWrite: false });
+const planLoader = new THREE.TextureLoader();
+planLoader.load('assets/plan-2d.png', (t) => { planOverlayMat.map = t; planOverlayMat.needsUpdate = true; });
+const planOverlay = new THREE.Mesh(planOverlayGeo, planOverlayMat);
+planOverlay.rotation.x = -Math.PI/2;
+planOverlay.rotation.z = Math.PI/2;   // image length (wide) axis → world Z, per our E-W convention
+planOverlay.position.set(0, 0.15, 0);
+debugGroup.add(planOverlay);
+
+// Wireframe footprints of every major zone, using the SAME coordinates
+// the actual geometry was built with — this is the ground truth, not a guess.
+function debugBox(w, d, x, z, color, label) {
+  const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(w, 2, d));
+  const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color, linewidth:2 }));
+  line.position.set(x, 1, z);
+  debugGroup.add(line);
+  if (label) debugGroup.add(makeLabel(label, x, 6, z, color));
+}
+function makeLabel(text, x, y, z, color) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 96;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(10,16,12,0.82)'; g.fillRect(0,0,512,96);
+  g.strokeStyle = '#' + color.toString(16).padStart(6,'0'); g.lineWidth = 4; g.strokeRect(2,2,508,92);
+  g.fillStyle = '#F5F0E8'; g.font = 'bold 40px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 256, 48);
+  const tex = new THREE.CanvasTexture(c);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  sprite.scale.set(26, 5, 1);
+  sprite.position.set(x, y, z);
+  return sprite;
+}
+
+debugBox(145, 275, 0, 0, 0xffffff, 'MAIN POLO FIELD — 274m × 146m (E–W)');
+debugBox(220, 38, -94, 0, 0x3fa8c8, 'PROPOSED LAKE — north flank');
+debugBox(16, 86, 92, 0, 0xC9A84C, 'CLUBHOUSE — south flank');
+debugBox(6, 168, -102, 0, 0xcfa060, 'PREMIUM VILLAS — north row');
+debugBox(6, 168, 102, 0, 0xcfa060, 'PREMIUM VILLAS — south row');
+debugBox(28, 220, -132, 0, 0xcfa060, 'CRESCENT VILLAS — lake arc');
+debugBox(188, 122, 65, -215, 0x4caf50, 'TRAINING FIELD — N–S axis');
+debugBox(38, 14, 175, -190, 0xb3502a, 'STABLES / EQUESTRIAN — SW');
+debugBox(34, 46, 78, 178, 0x4caf50, 'PADDOCK — E');
+debugBox(26, 14, 118, 195, 0xffffff, 'COMMERCIAL BLOCK 2B — E');
+debugBox(16, 10, 128, 55, 0xe8e2d4, 'APT BLOCK A');
+debugBox(16, 10, 128, -55, 0xe8e2d4, 'APT BLOCK B');
+
+debugGroup.visible = false;
+
+let overlayRotSteps = 0;
+function toggleDebug() {
+  debugMode = !debugMode;
+  debugGroup.visible = debugMode;
+  document.getElementById('debug-hud').style.display = debugMode ? 'flex' : 'none';
+  if (debugMode) { freeWalk = false; }
+}
+window.toggleDebug = toggleDebug;
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'm' || e.key === 'M') toggleDebug();
+  if (!debugMode) return;
+  if (e.key === '[') { overlayRotSteps--; planOverlay.rotation.z = Math.PI/2 + overlayRotSteps * Math.PI/2; }
+  if (e.key === ']') { overlayRotSteps++; planOverlay.rotation.z = Math.PI/2 + overlayRotSteps * Math.PI/2; }
+  if (e.key === 'ArrowLeft')  planOverlay.position.x -= 2;
+  if (e.key === 'ArrowRight') planOverlay.position.x += 2;
+  if (e.key === 'ArrowUp')    planOverlay.position.z -= 2;
+  if (e.key === 'ArrowDown')  planOverlay.position.z += 2;
+  if (e.key === 'h' || e.key === 'H') planOverlay.visible = !planOverlay.visible;
+});
+// On-screen HUD (mobile-friendly)
+{
+  const hud = document.createElement('div');
+  hud.id = 'debug-hud';
+  hud.style.cssText = 'display:none;position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:40;background:rgba(10,16,12,.85);border:1px solid #C9A84C;border-radius:8px;padding:10px 16px;color:#F5F0E8;font-family:Inter,sans-serif;font-size:11px;letter-spacing:.05em;gap:14px;align-items:center;';
+  hud.innerHTML = `<b style="color:#C9A84C">MASTERPLAN DEBUG</b>
+    <span>[ / ] rotate overlay · arrows nudge · H hide plan</span>
+    <button id="debug-exit" style="background:none;border:1px solid #F5F0E8;color:#F5F0E8;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:10px;">Exit (M)</button>`;
+  document.body.appendChild(hud);
+  document.getElementById('debug-exit').onclick = toggleDebug;
+}
 
 function animate() {
   requestAnimationFrame(animate);
@@ -1751,7 +1877,7 @@ function animate() {
     const px = camera.position.x, pz = camera.position.z;
     if (px > 78 && px < 106 && Math.abs(pz) < 45) {          // clubhouse threshold (south flank)
       firePortal('clubhouse.html?entry=field');
-    } else if (px > 95 && px < 140 && pz < -160 && pz > -215) { // stables threshold (southwest)
+    } else if (px > 150 && px < 200 && pz < -160 && pz > -215) { // stables threshold (southwest)
       firePortal('stables.html?entry=field');
     }
   }
@@ -1815,7 +1941,7 @@ function animate() {
   // Update radar every frame
   drawRadar();
 
-  renderer.render(scene, camera);
+  renderer.render(scene, debugMode ? debugCam : camera);
 }
 
 /* ── Initial yaw ── */
