@@ -409,21 +409,21 @@ function _glow(w,h,x,y,z,ry=0){
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w,h), _glowMat);
   m.position.set(x,y,z); m.rotation.y = ry; scene.add(m); _glows.push(m);
 }
-_glow(78, 6, 0, 6.5, 181.4, Math.PI);                 // clubhouse facade
+_glow(6, 6, 84, 6.5, 0, -Math.PI/2);                  // clubhouse facade (south flank, rotated)
 for (let i=0;i<14;i++){                               // villa rows (both sides, field-facing)
   const z = -78 + i*12;
-  _glow(6, 2.2, -97.6, 3.2, z, Math.PI/2);
-  _glow(6, 2.2,  97.6, 3.2, z, -Math.PI/2);
+  _glow(6, 2.2, -97.6, 3.2, z, Math.PI/2);   // north (lake-side) villas
+  _glow(6, 2.2,  97.6, 3.2, z, -Math.PI/2);  // south (clubhouse-side) villas
 }
-_glow(20, 8, 135.4, 10, 20, -Math.PI/2);              // apartment blocks
-_glow(20, 8, 145.4, 10, -28, -Math.PI/2);
-_glow(26, 2.4, -168, 2.4, 146.2);                     // stables
+_glow(16, 8, 118, 10, 55, -Math.PI/2);                // apartment block A
+_glow(16, 8, 118, 10, -55, -Math.PI/2);               // apartment block B
+_glow(26, 2.4, 108, 2.4, -190);                       // stables (southwest)
 const _nightPts = [
   new THREE.PointLight(0xffd090, 0, 60, 1.6),
   new THREE.PointLight(0xffd090, 0, 50, 1.6),
   new THREE.PointLight(0xffc878, 0, 40, 1.8),
 ];
-_nightPts[0].position.set(0, 8, 175); _nightPts[1].position.set(-168, 5, 132); _nightPts[2].position.set(0, 6, -190);
+_nightPts[0].position.set(84, 8, 0); _nightPts[1].position.set(108, 5, -195); _nightPts[2].position.set(-94, 6, 0);
 _nightPts.forEach(l=>scene.add(l));
 
 const _fogDay = new THREE.Color(0xc8e8b8), _fogDusk = new THREE.Color(0xe0a870), _fogNight = new THREE.Color(0x0a1220);
@@ -739,11 +739,15 @@ function goalPost(z) {
 goalPost(-137.5); goalPost(137.5);
 
 /* ═══════════════════════════════════════════════
-   PROPOSED LAKE
+   PROPOSED LAKE — CORRECTED ORIENTATION
+   Runs the length of the NORTH touchline (-X flank),
+   parallel to the field, not behind a goal end.
+   Compass: -X = North · +X = South · -Z = West · +Z = East
 ═══════════════════════════════════════════════ */
-const lakeGeo = new THREE.CylinderGeometry(46, 46, 0.15, 36);
+const lakeGeo = new THREE.CylinderGeometry(46, 46, 0.15, 48);
 const lake = new THREE.Mesh(lakeGeo, M.water);
-lake.position.set(0, 0.08, -196);
+lake.scale.set(0.42, 1, 2.35);           // squash to an elongated crescent, ~220m long × ~38m wide
+lake.position.set(-94, 0.08, 0);          // north flank, opposite the clubhouse
 lake.receiveShadow = true;
 scene.add(lake);
 
@@ -846,12 +850,16 @@ function buildClubhouse() {
   const band = box(86, 0.18, 0.1, new THREE.MeshStandardMaterial({ color:0xc8a840, roughness:0.4, metalness:0.3 }));
   add(g, band, 0, 3.7, -8.2);
 
-  g.position.set(0, 0, 188);
+  // Rotated 90° so the 86m glazed facade runs along the field's length (Z)
+  // instead of capping the short end. Positioned on the SOUTH flank,
+  // directly opposite the lake — matches the approved masterplan.
+  g.rotation.y = Math.PI/2;
+  g.position.set(92, 0, 0);
   scene.add(g);
 
   // Click target for info
   gf.userData = { zone:'clubhouse', lbl:'Hospitality', name:'Clubhouse & Pavilion',
-    desc:'3-floor luxury clubhouse · 3,419 sqm · Sports lounge, restaurant, 8 skyboxes, tiered spectator stands' };
+    desc:'3-floor luxury clubhouse · 3,419 sqm · Sports lounge, restaurant, 8 skyboxes, tiered spectator stands · South touchline, opposite the lake' };
   clickables.push(gf);
 }
 
@@ -935,7 +943,7 @@ function makeVilla(parentGrp, px, pz, facingEast) {
 
   // Click target
   g.traverse(child => { if(child.isMesh && child === base) {
-    child.userData = { zone:'villa', lbl:'Residential', name: facingEast ? 'Premium Villa — East' : 'Premium Villa — West',
+    child.userData = { zone:'villa', lbl:'Residential', name: facingEast ? 'Premium Villa — South (Clubhouse side)' : 'Premium Villa — North (Lake side)',
       desc:'3-bed polo-view villa · 330 sqm · Timber louvre screens · Glass balustrades · Undercroft parking' };
     clickables.push(child);
   }});
@@ -945,11 +953,12 @@ function makeVilla(parentGrp, px, pz, facingEast) {
 }
 
 function buildVillas() {
-  const wG = grp(); wG.position.set(-102, 0, 0); scene.add(wG);
-  const eG = grp(); eG.position.set( 102, 0, 0); scene.add(eG);
+  // North row (x=-102) — lake-side flank · South row (x=+102) — clubhouse-side flank
+  const nG = grp(); nG.position.set(-102, 0, 0); scene.add(nG);
+  const sG = grp(); sG.position.set( 102, 0, 0); scene.add(sG);
   for(let i=0;i<14;i++) {
-    makeVilla(wG, 0, -78 + i*12, false);
-    makeVilla(eG, 0, -78 + i*12, true);
+    makeVilla(nG, 0, -78 + i*12, false);
+    makeVilla(sG, 0, -78 + i*12, true);
   }
 }
 
@@ -959,7 +968,8 @@ function buildVillas() {
    fins, timber centre panel, curved wing canopy
 ═══════════════════════════════════════════════ */
 function buildApartments() {
-  [[138, 20],[148, -28]].forEach(([px, pz], idx) => {
+  // South flank, either side of the clubhouse — matches the render (white towers beside red-roofed reception)
+  [[128, 55],[128, -55]].forEach(([px, pz], idx) => {
     const g = grp();
 
     // Main body — 7 floors
@@ -1096,15 +1106,18 @@ function buildStables() {
     desc:'4 blocks · 56 stalls · Red laterite brick · Exposed timber trusses · Terracotta tiled roof · Cobblestone courtyard' };
   clickables.push(sb1);
 
-  g.position.set(-168, 0, 140);
+  g.position.set(118, 0, -190);   // southwest corner, adjacent to training field
   scene.add(g);
 }
 
 /* ═══════════════════════════════════════════════
-   CRESCENT VILLAS — north arc
+   CRESCENT VILLAS — lake-side (north) arc
 ═══════════════════════════════════════════════ */
 function buildCrescent() {
-  [[-55,-228],[-38,-238],[-20,-244],[-3,-246],[14,-246],[31,-244],[48,-238],[63,-230]].forEach(([x,z]) => {
+  // Garden/Museum crescent villas hug the lake's outer (north) edge, spread along its length (Z)
+  const crescentPts = [];
+  for (let i=0;i<8;i++){ const t = -1 + i*(2/7); crescentPts.push([-124 - Math.abs(t)*6, t*98]); }
+  crescentPts.forEach(([x,z]) => {
     const g = grp();
     const body = box(8.5, 7.5, 9, M.concrete);
     add(g, body, 0, 3.75, 0);
@@ -1131,10 +1144,10 @@ function buildCrescent() {
 ═══════════════════════════════════════════════ */
 function buildTraining() {
   const surround = plane(122, 188, M.laterite);
-  surround.position.set(-188, 0.005, -55);
+  surround.position.set(65, 0.005, -215);   // southwest corner: south flank (+X), west end (-Z)
   scene.add(surround);
   const grass = plane(100, 165, M.grass);
-  grass.position.set(-188, 0.01, -55);
+  grass.position.set(65, 0.01, -215);
   scene.add(grass);
   grass.userData = { zone:'training', lbl:'Equestrian', name:'Training Field',
     desc:'Polo academy · 5,000 sqm · Practice zones · Adjacent to stables' };
@@ -1144,6 +1157,71 @@ function buildTraining() {
 /* ═══════════════════════════════════════════════
    TROPICAL TREES — procedural
 ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+   EAST END — Paddock · Green Area · Game Park ·
+   Commercial Block 2B (previously missing from the model)
+═══════════════════════════════════════════════ */
+function buildEastEnd() {
+  const fenceMat = new THREE.MeshStandardMaterial({ color:0xe8e2d0, roughness:0.7 });
+
+  // Paddock — fenced grass rectangle
+  const paddockGrp = grp();
+  const pg = plane(34, 46, M.grass);
+  add(paddockGrp, pg, 0, 0.02, 0);
+  pg.userData = { zone:'paddock', lbl:'Equestrian', name:'Paddock',
+    desc:'1,645 sqm · Turnout paddock for horses · Post-and-rail fencing' };
+  clickables.push(pg);
+  for (let i=-2;i<=2;i++){
+    [-17,17].forEach(z=>{ const post = cyl(0.09,0.09,1.1,fenceMat,6); add(paddockGrp, post, i*8.5, 0.55, z); });
+  }
+  [-23,23].forEach(x=>{
+    const rail = box(0.08,0.08,46, fenceMat); rail.rotation.y = Math.PI/2;
+    add(paddockGrp, rail, x, 0.75, 0);
+  });
+  paddockGrp.position.set(78, 0, 178);
+  scene.add(paddockGrp);
+
+  // Green area — open lawn with shade trees
+  const green = plane(42, 40, M.grass);
+  green.position.set(30, 0.015, 195);
+  green.userData = { zone:'green', lbl:'Amenity', name:'Green Area',
+    desc:'Open communal lawn · Shade trees · Informal recreation space' };
+  clickables.push(green);
+  scene.add(green);
+
+  // Game park / playground — simple play structures
+  const playGrp = grp();
+  const playSurface = plane(24, 20, new THREE.MeshStandardMaterial({ color:0xd8a860, roughness:0.9 }));
+  add(playGrp, playSurface, 0, 0.02, 0);
+  playSurface.userData = { zone:'gamepark', lbl:'Amenity', name:'Game Park & Playground',
+    desc:'Children playground · Soft-fall surfacing · Shaded seating' };
+  clickables.push(playSurface);
+  const canopyMat = new THREE.MeshStandardMaterial({ color:0xC9A84C, roughness:0.7, side:THREE.DoubleSide });
+  const canopy = new THREE.Mesh(new THREE.ConeGeometry(4, 1.4, 8, 1, true), canopyMat);
+  add(playGrp, canopy, -4, 3.2, 2); canopy.castShadow = true;
+  add(playGrp, cyl(0.09,0.09,3, M.timberDark), -4, 1.6, 2);
+  [[3,-3],[6,1],[2,4]].forEach(([x,z])=>{
+    const swing = box(0.06,1.8,0.06, M.timberDark); add(playGrp, swing, x, 0.9, z);
+  });
+  playGrp.position.set(72, 0, 220);
+  scene.add(playGrp);
+
+  // Commercial Block 2B — simple two-storey retail/office massing
+  const comGrp = grp();
+  const cb = box(26, 7.2, 14, M.white);
+  add(comGrp, cb, 0, 3.6, 0);
+  cb.castShadow = true;
+  const cbg = box(24, 5.6, 0.2, M.glass);
+  add(comGrp, cbg, 0, 3.8, -7.1);
+  const cbRoof = box(27, 0.4, 15, M.cream);
+  add(comGrp, cbRoof, 0, 7.3, 0);
+  cb.userData = { zone:'commercial', lbl:'Commercial', name:'Commercial Block 2B',
+    desc:'Retail & convenience block · Serves the eastern residential cluster' };
+  clickables.push(cb);
+  comGrp.position.set(118, 0, 195);
+  scene.add(comGrp);
+}
+
 function buildTrees() {
   /* ── Realistic royal palms — textured ringed trunks, drooping alpha fronds, wind sway ── */
   const R = (a,b)=>a+Math.random()*(b-a);
@@ -1290,7 +1368,7 @@ const EYE_HEIGHT = 1.65;
 
 let camPos    = new THREE.Vector3(0, EYE_HEIGHT, 0);
 let targetPos = new THREE.Vector3(0, EYE_HEIGHT, 0);
-let yaw   = Math.PI;  // looking south toward clubhouse
+let yaw   = Math.PI/2;  // looking south/+X toward clubhouse
 let pitch = 0;
 const MAX_PITCH = Math.PI / 2.2;
 
@@ -1458,12 +1536,12 @@ joyEl.addEventListener('touchend', e => {
 
 /* ── Viewpoints ── */
 const VIEWPOINTS = [
-  { pos:[0,   EYE_HEIGHT,  0],   yaw:Math.PI,   pitch:0,    label:'Centre Field' },
-  { pos:[0,   3.5,       165],   yaw:Math.PI,   pitch:-0.1, label:'Clubhouse End' },
-  { pos:[-76, EYE_HEIGHT,-40],   yaw:Math.PI/2, pitch:0,    label:'Pony Line' },
-  { pos:[0,   EYE_HEIGHT,-155],  yaw:0,         pitch:0.05, label:'Lake End' },
-  { pos:[-94, 2.5,         0],   yaw:Math.PI/2, pitch:0,    label:'Villa West' },
-  { pos:[-150,EYE_HEIGHT, 118],  yaw:Math.PI/4, pitch:0,    label:'Stables Yard' },
+  { pos:[0,   EYE_HEIGHT,  0],   yaw:Math.PI/2,  pitch:0,     label:'Centre Field' },
+  { pos:[70,  3.5,         0],   yaw:Math.PI/2,  pitch:-0.08, label:'Clubhouse (South)' },
+  { pos:[-76, EYE_HEIGHT,-40],   yaw:0,          pitch:0,     label:'Pony Line' },
+  { pos:[-70, EYE_HEIGHT,  0],   yaw:-Math.PI/2, pitch:0.05,  label:'Lake (North)' },
+  { pos:[-94, 2.5,         0],   yaw:-Math.PI/2, pitch:0,     label:'Villas — North' },
+  { pos:[100, EYE_HEIGHT,-195],  yaw:Math.PI/4,  pitch:0,     label:'Stables Yard' },
 ];
 
 let curVP = 0;
@@ -1480,10 +1558,10 @@ function setVP(idx) {
   document.querySelectorAll('.vpb').forEach((b,i) => b.classList.toggle('on', i===idx));
   const infos = [
     { lbl:'Main Field',  name:'International Polo Field',   desc:'FIP-standard · 275m × 145m · Red laterite pony track · 30, 40 and 60-yard markings' },
-    { lbl:'Hospitality', name:'Clubhouse & Pavilion',       desc:'3-floor luxury clubhouse · 3,419 sqm · Tiered spectator stands overlooking the field' },
+    { lbl:'Hospitality', name:'Clubhouse & Pavilion',       desc:'3-floor luxury clubhouse · 3,419 sqm · South touchline, directly opposite the lake · Tiered spectator stands' },
     { lbl:'Equestrian',  name:'Pony Line',                  desc:'The red laterite clay surround · 18m wide on all four sides · Where horses turn at the boundary' },
-    { lbl:'Feature',     name:'Proposed Lake',              desc:'Ornamental crescent lake · Natural boundary between polo field and northern crescent villas' },
-    { lbl:'Residential', name:'Premium Villas — West',      desc:'14 polo-view villas · 330 sqm each · Blonde timber louvres · Glass balustrades · Undercroft parking' },
+    { lbl:'Feature',     name:'Proposed Lake',              desc:'Ornamental crescent lake · Runs the length of the north touchline, opposite the clubhouse' },
+    { lbl:'Residential', name:'Premium Villas — North',      desc:'14 polo-view villas · 330 sqm each · Lake-facing row · Blonde timber louvres · Glass balustrades' },
     { lbl:'Equestrian',  name:'Horse Stables',              desc:'4 blocks · 56 stalls · Red laterite brick · Exposed timber trusses · Terracotta roof · Cobblestone yard' },
   ];
   showInfo(infos[idx].lbl, infos[idx].name, infos[idx].desc);
@@ -1525,8 +1603,10 @@ let radarImgLoaded = false;
 radarImg.onload = () => { radarImgLoaded = true; };
 
 function worldToRadar(wx, wz) {
-  const rx = ((wx - WORLD_X_MIN) / (WORLD_X_MAX - WORLD_X_MIN)) * RC_W;
-  const ry = ((wz - WORLD_Z_MIN) / (WORLD_Z_MAX - WORLD_Z_MIN)) * RC_H;
+  // Real plan-2d.png is landscape with the field's LENGTH (world Z, E-W) running
+  // horizontally and WIDTH (world X, N-S) running vertically — map accordingly.
+  const rx = ((wz - WORLD_Z_MIN) / (WORLD_Z_MAX - WORLD_Z_MIN)) * RC_W;
+  const ry = ((wx - WORLD_X_MIN) / (WORLD_X_MAX - WORLD_X_MIN)) * RC_H;
   return { x: rx, y: ry };
 }
 
@@ -1565,7 +1645,8 @@ function drawRadar() {
   // yaw=0 is +Z in world; in radar +Z is downward, +X is rightward
   // radar yaw: 0 = down, π/2 = right → radar angle = yaw - π/2... 
   // world yaw=Math.PI means facing -Z (north on the plan which is up in world, down in radar)
-  const radarAngle = yaw - Math.PI/2; // rotate by 90° for canvas space
+  // radar x = world Z, radar y = world X (see worldToRadar) → cone angle = yaw directly
+  const radarAngle = yaw;
 
   const x1 = rp.x + Math.cos(radarAngle - coneAngle) * coneLen;
   const y1 = rp.y + Math.sin(radarAngle - coneAngle) * coneLen;
@@ -1636,11 +1717,44 @@ const moveDir  = new THREE.Vector3();
 const rightDir = new THREE.Vector3();
 const UP       = new THREE.Vector3(0, 1, 0);
 const clock    = new THREE.Clock();
+
+/* ── Seamless portal system ── */
+let portalFired = false;
+const portalFade = document.createElement('div');
+portalFade.style.cssText = 'position:fixed;inset:0;background:#0a0f0c;opacity:0;pointer-events:none;z-index:90;transition:opacity .35s';
+document.body.appendChild(portalFade);
+function firePortal(url) {
+  portalFired = true;
+  portalFade.style.opacity = '1';
+  setTimeout(() => { window.location.href = url; }, 380);
+}
+// Arriving back from clubhouse.html / stables.html — spawn at the matching threshold, facing into the field
+(function spawnFromEntry(){
+  const entry = new URLSearchParams(window.location.search).get('entry');
+  if (entry === 'clubhouse') {
+    camera.position.set(84, EYE_HEIGHT, 0); yaw = -Math.PI/2; freeWalk = true;
+  } else if (entry === 'stables') {
+    camera.position.set(108, EYE_HEIGHT, -172); yaw = -Math.PI/4; freeWalk = true;
+  }
+  portalFade.style.opacity = '0';
+})();
 const palmCrowns = [];
 
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05); // cap at 50ms
+
+  /* ── Seamless portals — walk close enough to a building and the
+     estate "continues" into its dedicated scene, spawning you right
+     at the threshold instead of dumping you on a menu viewpoint ── */
+  if (freeWalk && !portalFired) {
+    const px = camera.position.x, pz = camera.position.z;
+    if (px > 78 && px < 106 && Math.abs(pz) < 45) {          // clubhouse threshold (south flank)
+      firePortal('clubhouse.html?entry=field');
+    } else if (px > 95 && px < 140 && pz < -160 && pz > -215) { // stables threshold (southwest)
+      firePortal('stables.html?entry=field');
+    }
+  }
 
   /* ── Palm wind sway ── */
   const _t = clock.elapsedTime;
@@ -1723,6 +1837,7 @@ function build() {
     [() => { buildStables(); },   72, 'Stables'],
     [() => { buildCrescent(); },  80, 'Crescent'],
     [() => { buildTraining(); },  86, 'Training field'],
+    [() => { buildEastEnd(); },   92, 'East precinct'],
     [() => { buildTrees(); },     98, 'Landscape'],
   ];
 
