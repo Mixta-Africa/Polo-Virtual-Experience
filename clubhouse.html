@@ -126,6 +126,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xcfe0c8, 140, 520);
 const camera = new THREE.PerspectiveCamera(62, innerWidth/innerHeight, 0.1, 2200);
 
 /* ═══════════════════════════ SKY / SUN / DAY-NIGHT ══════════════════════ */
@@ -568,6 +569,51 @@ const interior = new THREE.Group(); world.add(interior);
   const desk = box(3.4, 1.1, 1.0, M.timber, 0, .55, 3.5, interior);
 }
 
+/* ═══════════════════════════ CONTEXT SKYLINE ════════════════════════════
+   The clubhouse doesn't stand alone — the rest of the estate is visible
+   in the distance, at the same relative positions as in polo-field.html
+   (transformed into this scene's local frame: clubhouse sits at world
+   (92,0) rotated 90° there, so local_x=-(wz), local_z=(wx-92)).
+   Kept deliberately low-poly + unlit-flat since fog hazes them anyway —
+   they're read-at-a-glance landmarks, not inspected up close.
+════════════════════════════════════════════════════════════════════════ */
+const context = new THREE.Group(); world.add(context);
+{
+  const flat = (c)=> new THREE.MeshStandardMaterial({ color:c, roughness:1, fog:true });
+  const cVilla = flat(0xcfc6b0), cLake = flat(0x5f96a8), cGrass = flat(0x6f9a52),
+        cWhite = flat(0xe8e2d4), cBrick = flat(0xb3502a), cLaterite = flat(0x8a5a34);
+
+  // Lake — distant blue band beyond the villa line
+  const ctxLake = box(210, 0.3, 30, cLake, 0, 0.05, -186, context, false);
+
+  // North (lake-side) villa row — 14 low blocks along local X at z=-194
+  for (let i=0;i<14;i++) box(7, 10, 7, cVilla, -78 + i*12, 5, -194, context, false);
+
+  // Crescent (garden/museum) villas — arc further beyond the lake
+  for (let i=0;i<8;i++){ const t=-1+i*(2/7); box(6,8,6, cVilla, t*90, 4, -222 - Math.abs(t)*5, context, false); }
+
+  // Loft apartment strip further north, beyond the crescent
+  box(200, 6, 8, cWhite, 0, 3, -246, context, false);
+
+  // South (clubhouse-side) villas flanking either side, close by
+  for (let i=0;i<14;i++){ const zi=-78+i*12; if (Math.abs(zi) < 16) continue; box(7,10,7, cVilla, zi, 5, 10, context, false); }
+
+  // Apartment blocks either side
+  box(14, 23, 10, cWhite, -55, 11.5, 36, context, false);
+  box(14, 23, 10, cWhite, 55, 11.5, 36, context, false);
+
+  // Stables — far to one side, low red-brick mass
+  box(38, 4, 14, cBrick, 190, 2, 26, context, false);
+  box(58, 0.2, 30, cLaterite, 190, 0.05, 4, context, false);
+
+  // Training field — far to the other side, big green rectangle
+  box(120, 0.2, 165, cGrass, 215, 0.05, -27, context, false);
+
+  // East precinct — paddock / commercial, distant on the far side
+  box(34, 0.2, 46, cGrass, -178, 0.05, -14, context, false);
+  box(26, 7, 14, cWhite, -195, 3.5, 26, context, false);
+}
+
 /* ═══════════════════════════ PALM TREES (with sway) ════════════════════ */
 function palm(x, z, s=1){
   const g = new THREE.Group(); g.position.set(x,0,z);
@@ -667,6 +713,8 @@ function setHour(h){
   moon.intensity = (1-day) * .28;
   starMat.opacity = (1-day) * .9;
   renderer.toneMappingExposure = .28 + .3*day + dusk*.12;
+  const _fogDay = 0xcfe0c8, _fogDusk = 0xe0a868, _fogNight = 0x0a1220;
+  scene.fog.color.set(_fogNight).lerp(new THREE.Color(_fogDay), day).lerp(new THREE.Color(_fogDusk), dusk*.6);
 
   const glow = (1-day);
   for (const p of litGlassPanes) p.material.emissiveIntensity = glow * rand(1.4, 2.4);
