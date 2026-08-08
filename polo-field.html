@@ -880,7 +880,7 @@ function buildClubhouse() {
    timber louvres, flat roof, glass balustrade,
    undercroft piloti base
 ═══════════════════════════════════════════════ */
-function makeVilla(parentGrp, px, pz, facingEast) {
+function makeVilla(parentGrp, px, pz, facingEast, rotY=0, isCorner=false) {
   const g = grp();
   const fz = facingEast ? 1 : -1;
 
@@ -951,10 +951,12 @@ function makeVilla(parentGrp, px, pz, facingEast) {
   });
 
   g.position.set(px, 0, pz);
+  g.rotation.y = rotY;
 
   // Click target
   g.traverse(child => { if(child.isMesh && child === base) {
-    child.userData = { zone:'villa', lbl:'Residential', name: facingEast ? 'Premium Villa — South (Clubhouse side)' : 'Premium Villa — North (Lake side)',
+    child.userData = { zone:'villa', lbl:'Residential',
+      name: isCorner ? 'Premium Villa — Corner Wrap' : (facingEast ? 'Premium Villa — South (Clubhouse side)' : 'Premium Villa — North (Lake side)'),
       desc:'3-bed polo-view villa · 330 sqm · Timber louvre screens · Glass balustrades · Undercroft parking' };
     clickables.push(child);
   }});
@@ -970,6 +972,32 @@ function buildVillas() {
   for(let i=0;i<14;i++) {
     makeVilla(nG, 0, -78 + i*12, false);
     makeVilla(sG, 0, -78 + i*12, true);
+  }
+
+  // ── Villa ring corners — west and east ends wrap the villas around
+  //    the field's short ends, connecting the north and south rows
+  //    into a continuous horseshoe instead of two disconnected rows.
+  //    Semicircle, radius 102 (matching the row offset), centred on
+  //    each row-end so it meets both rows tangentially.
+  const wG = grp(); scene.add(wG);
+  const eG = grp(); scene.add(eG);
+  const CORNER_N = 7, R = 102;
+  for (let i=0;i<=CORNER_N;i++){
+    const t = i / CORNER_N;
+    // West corner: centre (0,-78), sweep π→2π (through -Z, the west tip)
+    {
+      const theta = Math.PI + t*Math.PI;
+      const x = R*Math.cos(theta), z = -78 + R*Math.sin(theta);
+      const rotY = -theta + Math.PI/2;   // face radially inward, toward the field
+      makeVilla(wG, x, z, false, rotY, true);
+    }
+    // East corner: centre (0,78), sweep π→0 (through +Z, the east tip)
+    {
+      const theta = Math.PI - t*Math.PI;
+      const x = R*Math.cos(theta), z = 78 + R*Math.sin(theta);
+      const rotY = -theta + Math.PI/2;
+      makeVilla(eG, x, z, true, rotY, true);
+    }
   }
 }
 
@@ -1155,11 +1183,12 @@ function buildCrescent() {
 ═══════════════════════════════════════════════ */
 function buildTraining() {
   // Long axis along X (north-south) — perpendicular to the main field,
-  // which runs along Z (east-west). These must NOT share the same axis.
-  const surround = plane(188, 122, M.laterite);
+  // which runs along Z (east-west). Rightsized to the actual project
+  // spec: 5,000 sqm (was 22,936 sqm — 4.5× oversized).
+  const surround = plane(115, 62, M.laterite);
   surround.position.set(65, 0.005, -215);
   scene.add(surround);
-  const grass = plane(165, 100, M.grass);
+  const grass = plane(100, 50, M.grass);
   grass.position.set(65, 0.01, -215);
   scene.add(grass);
   grass.userData = { zone:'training', lbl:'Equestrian', name:'Training Field',
@@ -1174,6 +1203,102 @@ function buildTraining() {
    EAST END — Paddock · Green Area · Game Park ·
    Commercial Block 2B (previously missing from the model)
 ═══════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════
+   ROAD NETWORK
+   Reproduced before/alongside buildings rather than treated as an
+   afterthought — the curved ring road follows the exact same arc
+   geometry as the villa horseshoe (offset 16m outward), Proposed
+   Lagos Road runs the full southern boundary, and a north perimeter
+   road serves the lake/loft precinct.
+═══════════════════════════════════════════════ */
+function roadRibbon(pts, width, mat, yPos=0.06) {
+  const n = pts.length;
+  const left = [], right = [];
+  for (let i=0;i<n;i++){
+    const p = pts[i], prev = pts[Math.max(0,i-1)], next = pts[Math.min(n-1,i+1)];
+    const dx = next.x-prev.x, dz = next.z-prev.z;
+    const len = Math.hypot(dx,dz) || 1;
+    const nx = -dz/len, nz = dx/len;
+    left.push({ x: p.x + nx*width/2, z: p.z + nz*width/2 });
+    right.push({ x: p.x - nx*width/2, z: p.z - nz*width/2 });
+  }
+  const positions = [], uvs = [];
+  for (let i=0;i<n;i++){
+    positions.push(left[i].x, yPos, left[i].z, right[i].x, yPos, right[i].z);
+    uvs.push(0, i/4, 1, i/4);
+  }
+  const indices = [];
+  for (let i=0;i<n-1;i++){ const a=i*2,b=i*2+1,c=i*2+2,d=i*2+3; indices.push(a,b,c, b,d,c); }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs,2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function buildRoads() {
+  const asphaltTex = canvasTex(128, 128, ctx => {
+    ctx.fillStyle = '#3a3a3c'; ctx.fillRect(0,0,128,128);
+    for (let i=0;i<800;i++){ const v=45+Math.random()*25|0; ctx.fillStyle=`rgb(${v},${v},${v+2})`; ctx.fillRect(Math.random()*128,Math.random()*128,2,2); }
+  });
+  asphaltTex.repeat.set(3,3);
+  const roadMat = new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: 0.9 });
+  const markingMat = new THREE.MeshStandardMaterial({ color: 0xf0d040, roughness: 0.5, transparent:true, opacity:0.85 });
+  const roads = grp(); scene.add(roads);
+
+  // ── Internal ring road — stadium shape, 16m outside the villa horseshoe ──
+  {
+    const R = 118, pts = [];
+    // north straight (west row side)
+    pts.push({x:-118, z:-78}, {x:-118, z:78});
+    // east corner arc, centre (0,78), R=118, sweep π→0
+    for (let i=0;i<=20;i++){ const t=i/20, th=Math.PI-t*Math.PI; pts.push({x:118*Math.cos(th), z:78+118*Math.sin(th)}); }
+    pts.push({x:118, z:-78});
+    // west corner arc, centre (0,-78), R=118, sweep 0→-π
+    for (let i=0;i<=20;i++){ const t=i/20, th=-t*Math.PI; pts.push({x:118*Math.cos(th), z:-78+118*Math.sin(th)}); }
+    const ring = roadRibbon(pts, 8, roadMat);
+    add(roads, ring, 0, 0, 0);
+    // dashed centreline
+    for (let i=0;i<pts.length-1;i+=2){
+      const p = pts[i]; const dm = plane(1.2, 0.25, markingMat);
+      const next = pts[Math.min(i+1,pts.length-1)];
+      dm.rotation.z = Math.atan2(next.x-p.x, next.z-p.z);
+      add(roads, dm, p.x, 0.09, p.z);
+    }
+  }
+
+  // ── Proposed Lagos Road — major southern arterial boundary ──
+  {
+    const pts = [{x:150, z:-260}, {x:150, z:260}];
+    const road = roadRibbon(pts, 16, roadMat);
+    add(roads, road, 0,0,0);
+    // Lane markings — dashed centre line + solid edge lines
+    for (let z=-255; z<255; z+=14){
+      const dm = plane(0.35, 8, markingMat); add(roads, dm, 150, 0.09, z+4);
+    }
+    const edgeMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.5, transparent:true, opacity:0.7 });
+    [142,158].forEach(x => { const el = plane(0.25, 520, edgeMat); add(roads, el, x, 0.08, 0); });
+    const lbl = { zone:'road', lbl:'Infrastructure', name:'Proposed Lagos Road', desc:'Major southern arterial boundary · Multi-lane · Estate entrance connection' };
+  }
+
+  // ── North perimeter road — serves the lake / loft-apartment precinct ──
+  {
+    const pts = [{x:-158, z:-140}, {x:-158, z:140}];
+    const road = roadRibbon(pts, 9, roadMat);
+    add(roads, road, 0,0,0);
+    for (let z=-135; z<135; z+=12){ const dm = plane(0.3, 6, markingMat); add(roads, dm, -158, 0.09, z+3); }
+  }
+
+  // ── Clubhouse forecourt spur — connects Lagos Road to the clubhouse drop-off ──
+  {
+    const pts = [{x:150, z:0}, {x:100, z:0}];
+    add(roads, roadRibbon(pts, 7, roadMat), 0,0,0);
+  }
+}
+
 function buildEastEnd() {
   const fenceMat = new THREE.MeshStandardMaterial({ color:0xe8e2d0, roughness:0.7 });
 
@@ -1826,12 +1951,17 @@ debugBox(16, 86, 92, 0, 0xC9A84C, 'CLUBHOUSE — south flank');
 debugBox(6, 168, -102, 0, 0xcfa060, 'PREMIUM VILLAS — north row');
 debugBox(6, 168, 102, 0, 0xcfa060, 'PREMIUM VILLAS — south row');
 debugBox(28, 220, -132, 0, 0xcfa060, 'CRESCENT VILLAS — lake arc');
-debugBox(188, 122, 65, -215, 0x4caf50, 'TRAINING FIELD — N–S axis');
+debugBox(115, 62, 65, -215, 0x4caf50, 'TRAINING FIELD — 5,000sqm N–S');
 debugBox(38, 14, 175, -190, 0xb3502a, 'STABLES / EQUESTRIAN — SW');
 debugBox(34, 46, 78, 178, 0x4caf50, 'PADDOCK — E');
 debugBox(26, 14, 118, 195, 0xffffff, 'COMMERCIAL BLOCK 2B — E');
 debugBox(16, 10, 128, 55, 0xe8e2d4, 'APT BLOCK A');
 debugBox(16, 10, 128, -55, 0xe8e2d4, 'APT BLOCK B');
+debugBox(8, 260, 150, 0, 0xf0d040, 'PROPOSED LAGOS ROAD');
+debugBox(9, 280, -158, 0, 0xf0d040, 'NORTH PERIMETER ROAD');
+debugBox(236, 236, 0, 0, 0x888888, 'RING ROAD — villa horseshoe +16m');
+debugBox(204, 4, 0, -180, 0xcfa060, 'VILLA RING — west wrap');
+debugBox(204, 4, 0, 180, 0xcfa060, 'VILLA RING — east wrap');
 
 debugGroup.visible = false;
 
@@ -1957,6 +2087,7 @@ function animate() {
 function build() {
   const progress = document.getElementById('lp');
   const steps = [
+    [() => { buildRoads(); },     8,  'Roads'],
     [() => { buildClubhouse(); }, 20, 'Clubhouse'],
     [() => { buildVillas(); },    45, 'Villas'],
     [() => { buildApartments(); },60, 'Apartments'],
