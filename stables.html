@@ -281,9 +281,9 @@ renderer.toneMappingExposure = 1.15;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0xd4b88a, 60, 200);
+scene.fog = new THREE.Fog(0xd4b88a, 60, 340);
 
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.05, 300);
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.05, 500);
 camera.position.set(0, 1.65, 30);
 
 window.addEventListener('resize', () => {
@@ -1052,6 +1052,36 @@ function palm(px,pz,s){
   palmCrowns.push({crown, phase:Math.random()*6.28});
 }
 [[-35,12],[-38,5],[-35,-5],[35,12],[38,5],[35,-5],[-35,-12],[35,-12]].forEach(([x,z])=>palm(x,z+BW/2));
+
+/* ═══════════════════════════ CONTEXT SKYLINE ════════════════════════════
+   The stables don't stand alone — the rest of the estate is visible on
+   the horizon, at the same relative positions as in polo-field.html
+   (stables sit at world (118,-190) there with no rotation, so this is a
+   straight translation: local_x = wx-118, local_z = wz+190).
+   Low-poly + flat colour on purpose — fog does the realism work.
+════════════════════════════════════════════════════════════════════════ */
+{
+  const flat = (c)=> new THREE.MeshStandardMaterial({ color:c, roughness:1 });
+  const cVilla = flat(0xcfc6b0), cLake = flat(0x5f96a8), cGrass = flat(0x5f9048),
+        cWhite = flat(0xe8e2d4), cClub = flat(0xf2ead9);
+  const ctx = grp(); scene.add(ctx);
+
+  // Polo field — distant green rectangle toward the estate
+  add(ctx, box(180, 0.2, 90, cGrass), -118, 0.1, 190);
+  // Lake beyond the field's north edge
+  add(ctx, box(150, 0.3, 20, cLake), -212, 0.15, 190);
+  // Clubhouse — small pale mass, south side of the field
+  add(ctx, box(60, 12, 10, cClub), -26, 6, 190);
+  // Villa rows flanking the field
+  for (let i=0;i<10;i++) add(ctx, box(5,7,5, cVilla), -220 + i*11, 3.5, 178);
+  for (let i=0;i<10;i++) add(ctx, box(5,7,5, cVilla), -220 + i*11, 3.5, 202);
+  // Loft apartment strip further out
+  add(ctx, box(160, 5, 6, cWhite), -118, 2.5, 246);
+
+  // Training field — right next door, close by
+  add(ctx, box(90, 0.2, 130, cGrass), -53, 0.1, -25);
+}
+
 
 // Bollard lights along courtyard
 const bollMat = new THREE.MeshStandardMaterial({color:0x808070,roughness:0.3,metalness:0.8});
